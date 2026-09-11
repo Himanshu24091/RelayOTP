@@ -7,6 +7,12 @@
   <meta name="description" content="Secure, zero-trace ephemeral verification code gateway for corporate workstations and restricted office networks.">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.8.0">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/camouflage.css') }}?v=2.8.0">
+  <!-- Brand Favicon & Touch Icons -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}?v=2.9.0">
+  <link rel="alternate icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=2.9.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32x32.png') }}?v=2.9.0">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}?v=2.9.0">
+  <meta name="theme-color" content="#090d16">
   {% block extra_head %}{% endblock %}
 </head>
 <body>

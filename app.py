@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, session, jsonify, request, redirect, url_for, flash
+from flask import Flask, render_template, session, jsonify, request, redirect, url_for, flash, send_from_directory
 from config import Config
 from utils.db import init_db
 
@@ -105,14 +105,29 @@ def create_app():
             'version': '2.0.0'
         }), 200
 
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory(
+            os.path.join(app.root_path, 'static'),
+            'favicon.ico',
+            mimetype='image/vnd.microsoft.icon'
+        )
+
     @app.context_processor
     def inject_globals():
+        is_admin = session.get('is_admin', False)
+        if 'user_id' in session and not is_admin:
+            from routers.admin_router import is_current_user_admin
+            is_admin = is_current_user_admin()
+            if is_admin:
+                session['is_admin'] = True
+
         return {
             'app_name': 'RelayOTP',
             'app_version': '2.0.0',
             'is_logged_in': 'user_id' in session,
             'current_user': session.get('username'),
-            'is_admin_session': session.get('is_admin', False)
+            'is_admin_session': is_admin
         }
 
     @app.after_request
