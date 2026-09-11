@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin Gateway - RelayOTP{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 2.5rem auto;">
+  <div class="card">
+    <div class="card-header" style="justify-content: center; flex-direction: column; text-align: center; gap: 0.5rem;">
+      <span style="font-size: 2.2rem;">👑</span>
+      <h1 class="card-title" style="font-size: 1.5rem;">Super Admin Gateway</h1>
+      <p style="color: var(--text-muted); font-size: 0.88rem;">System Governance & Multi-Tenant Control</p>
+    </div>
+
+    <!-- Segmented Tab Switcher -->
+    <div style="display: flex; gap: 0.35rem; margin-bottom: 1.25rem; background: rgba(0, 0, 0, 0.3); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+      <button type="button" id="tab-master" onclick="switchAdminTab('master')" style="flex: 1; border-radius: 6px; padding: 0.5rem; font-size: 0.85rem; font-weight: 600; background: var(--accent-purple); color: #fff; border: none; cursor: pointer; transition: all 0.2s ease;">
+        ⚡ Master Key
+      </button>
+      <button type="button" id="tab-account" onclick="switchAdminTab('account')" style="flex: 1; border-radius: 6px; padding: 0.5rem; font-size: 0.85rem; font-weight: 600; background: transparent; color: var(--text-muted); border: none; cursor: pointer; transition: all 0.2s ease;">
+        👤 Admin ID &amp; Password
+      </button>
+    </div>
+
+    <!-- 1. Master Key Unlock Form (Default) -->
+    <form method="POST" action="{{ url_for('admin.admin_login') }}" id="form-master">
+      <div class="form-group">
+        <label for="master_key" class="form-label">Super Admin Master Key</label>
+        <input 
+          type="password" 
+          id="master_key" 
+          name="master_key" 
+          class="form-input" 
+          placeholder="Enter Master Key (e.g. 123456)" 
+          required 
+          autofocus
+        >
+        <div class="form-hint">Default Master Key: <code style="color: var(--accent-cyan); font-weight: 600;">123456</code> (Instant one-click unlock)</div>
+      </div>
+
+      <div class="security-notice" style="font-size: 0.82rem;">
+        👑 <strong>Super Admin Clearance:</strong> Enter the Master Key to unlock administrative privileges without switching user accounts.
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        ⚡ UNLOCK SUPER ADMIN
+      </button>
+    </form>
+
+    <!-- 2. Admin ID & Password Form -->
+    <form method="POST" action="{{ url_for('admin.admin_login') }}" id="form-account" style="display: none;">
+      <div class="form-group">
+        <label for="admin_username" class="form-label">Admin Username</label>
+        <input 
+          type="text" 
+          id="admin_username" 
+          name="username" 
+          class="form-input" 
+          placeholder="e.g. admin"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="admin_password" class="form-label">Admin Password</label>
+        <input 
+          type="password" 
+          id="admin_password" 
+          name="password" 
+          class="form-input" 
+          placeholder="••••••••••••••••"
+        >
+        <div class="form-hint">Default Account: <code>admin</code> / Password: <code>admin123</code></div>
+      </div>
+
+      <div class="security-notice" style="font-size: 0.82rem;">
+        🛡️ <strong>Dedicated Session:</strong> Log in with dedicated administrative credentials to govern all tenant accounts.
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        🔐 SIGN IN AS ADMIN
+      </button>
+    </form>
+
+    <!-- Consistent Navigation Links -->
+    <div style="text-align: center; margin-top: 1.25rem; font-size: 0.88rem; color: var(--text-muted);">
+      Looking for regular user portal? <a href="{{ url_for('auth.login') }}" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600;">User Sign In</a>
+    </div>
+
+    <div style="text-align: center; margin-top: 0.85rem; font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;">
+      <a href="{{ url_for('dashboard.dashboard_view') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+        &larr; Return to Dashboard
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function switchAdminTab(type) {
+    const formMaster = document.getElementById('form-master');
+    const formAccount = document.getElementById('form-account');
+    const tabMaster = document.getElementById('tab-master');
+    const tabAccount = document.getElementById('tab-account');
+    const masterInput = document.getElementById('master_key');
+    const userInput = document.getElementById('admin_username');
+
+    if (type === 'master') {
+      formMaster.style.display = 'block';
+      formAccount.style.display = 'none';
+      tabMaster.style.background = 'var(--accent-purple)';
+      tabMaster.style.color = '#fff';
+      tabAccount.style.background = 'transparent';
+      tabAccount.style.color = 'var(--text-muted)';
+      masterInput.setAttribute('required', '');
+      userInput.removeAttribute('required');
+      masterInput.focus();
+    } else {
+      formMaster.style.display = 'none';
+      formAccount.style.display = 'block';
+      tabAccount.style.background = 'var(--accent-purple)';
+      tabAccount.style.color = '#fff';
+      tabMaster.style.background = 'transparent';
+      tabMaster.style.color = 'var(--text-muted)';
+      masterInput.removeAttribute('required');
+      userInput.setAttribute('required', '');
+      userInput.focus();
+    }
+  }
+</script>
+{% endblock %}

@@ -26,9 +26,14 @@
           </p>
         </div>
       </div>
-      <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        {% if current_user_id %}
         <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-secondary btn-sm">
-          📊 Back to User Dashboard
+          📊 User Dashboard
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-sm" style="background: rgba(225, 29, 72, 0.2); color: #fda4af; border: 1px solid rgba(225, 29, 72, 0.4); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600;">
+          🚪 Logout Admin
         </a>
       </div>
     </div>
@@ -120,7 +125,7 @@
               <th>Role</th>
               <th>Gmail Vault</th>
               <th>12h Passcode</th>
-              <th style="text-align: right;">Super Admin Actions</th>
+              <th style="text-align: right; min-width: 350px; white-space: nowrap;">Super Admin Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -169,45 +174,45 @@
                 </span>
                 <div style="font-size: 0.72rem; color: var(--text-muted);">{{ u.code_status }}</div>
               </td>
-              <td style="text-align: right;">
-                <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
+              <td style="text-align: right; white-space: nowrap;">
+                <div class="admin-actions-toolbar">
                   
                   <!-- Suspension / Lift Button -->
                   {% if u.is_suspended %}
-                    <form method="POST" action="{{ url_for('admin.admin_unsuspend_user', target_user_id=u.id) }}" style="display:inline;">
-                      <button type="submit" class="btn btn-secondary btn-sm" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4);" title="Lift suspension immediately">
+                    <form method="POST" action="{{ url_for('admin.admin_unsuspend_user', target_user_id=u.id) }}" style="display:inline; margin:0;">
+                      <button type="submit" class="admin-action-btn btn-reactivate" title="Lift suspension immediately">
                         🟢 Reactivate
                       </button>
                     </form>
                   {% else %}
-                    <button type="button" class="btn btn-secondary btn-sm" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" onclick="openSuspendModal({{ u.id }}, '{{ u.username }}')" title="Suspend account for suspicious activity">
+                    <button type="button" class="admin-action-btn btn-suspend" onclick="openSuspendModal({{ u.id }}, '{{ u.username }}')" title="Suspend account for suspicious activity">
                       🚫 Suspend
                     </button>
                   {% endif %}
 
                   <!-- Direct Password Reset Button -->
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="openResetPasswordModal({{ u.id }}, '{{ u.username }}')" title="Reset master password for this user">
+                  <button type="button" class="admin-action-btn btn-reset" onclick="openResetPasswordModal({{ u.id }}, '{{ u.username }}')" title="Reset master password for this user">
                     🔑 Reset PW
                   </button>
 
                   <!-- Reset 12h Code -->
-                  <form method="POST" action="{{ url_for('admin.admin_reset_code', target_user_id=u.id) }}" style="display:inline;">
-                    <button type="submit" class="btn btn-secondary btn-sm" title="Force generate a new 12h passcode">
+                  <form method="POST" action="{{ url_for('admin.admin_reset_code', target_user_id=u.id) }}" style="display:inline; margin:0;">
+                    <button type="submit" class="admin-action-btn btn-code" title="Force generate a new 12h passcode">
                       🔄 12h Code
                     </button>
                   </form>
 
                   <!-- Toggle Admin Role -->
-                  <form method="POST" action="{{ url_for('admin.admin_toggle_role', target_user_id=u.id) }}" style="display:inline;">
-                    <button type="submit" class="btn btn-secondary btn-sm" title="Toggle Admin / Regular User role">
+                  <form method="POST" action="{{ url_for('admin.admin_toggle_role', target_user_id=u.id) }}" style="display:inline; margin:0;">
+                    <button type="submit" class="admin-action-btn btn-icon btn-role" title="Toggle Admin / Regular User role">
                       🛡️
                     </button>
                   </form>
 
                   <!-- Delete User -->
-                  <form method="POST" action="{{ url_for('admin.admin_delete_user', target_user_id=u.id) }}" style="display:inline;"
+                  <form method="POST" action="{{ url_for('admin.admin_delete_user', target_user_id=u.id) }}" style="display:inline; margin:0;"
                         onsubmit="return confirm('PERMANENT DELETION: Are you sure you want to permanently delete tenant {{ u.username }} and all associated data? This cannot be undone.');">
-                    <button type="submit" class="btn btn-danger btn-sm" title="Delete User Permanently">
+                    <button type="submit" class="admin-action-btn btn-icon btn-delete" title="Delete User Permanently">
                       🗑️
                     </button>
                   </form>
@@ -493,6 +498,75 @@
           <li><strong>Credential Storage:</strong> AES-256 Fernet (In-Memory Decryption only during active fetch)</li>
           <li><strong>Ephemeral Retention:</strong> 10-Minute hard TTL for all verification codes</li>
         </ul>
+      </div>
+
+      <!-- Super Admin Access & Master PIN Configuration -->
+      <div class="card" style="margin-top: 1.5rem; margin-bottom: 0; border-color: rgba(225, 29, 72, 0.35); background: linear-gradient(135deg, rgba(225, 29, 72, 0.08), rgba(15, 23, 42, 0.95));">
+        <div class="card-header" style="border-bottom: 1px solid rgba(225, 29, 72, 0.2);">
+          <div>
+            <h2 class="card-title" style="font-size: 1.2rem; color: #fff;">
+              🔐 Super Admin Credentials & Master Access PIN
+            </h2>
+            <div style="font-size: 0.82rem; color: #fda4af; margin-top: 0.25rem;">
+              Customize your Master Key PIN and dedicated Super Admin login credentials according to your preference.
+            </div>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin.admin_update_credentials') }}" style="max-width: 600px; margin-top: 1rem;">
+          
+          <div class="form-group">
+            <label for="master_pin" class="form-label">
+              ⚡ Super Admin Master Key / PIN
+            </label>
+            <input 
+              type="text" 
+              id="master_pin" 
+              name="master_pin" 
+              class="form-input mono" 
+              value="{{ current_master_pin }}" 
+              placeholder="e.g. 123456 or your custom PIN" 
+              required
+              style="font-size: 1.05rem; font-weight: 700; color: #fbbf24; background: rgba(0,0,0,0.4);"
+            >
+            <div class="form-hint">Used for instant 1-click unlock on the Admin Gateway screen.</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="admin_username" class="form-label">
+                👤 Dedicated Admin ID
+              </label>
+              <input 
+                type="text" 
+                id="admin_username" 
+                name="admin_username" 
+                class="form-input" 
+                value="{{ current_admin_user }}" 
+                placeholder="e.g. admin"
+                style="background: rgba(0,0,0,0.4);"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="admin_password" class="form-label">
+                🔑 New Admin Password
+              </label>
+              <input 
+                type="password" 
+                id="admin_password" 
+                name="admin_password" 
+                class="form-input" 
+                placeholder="Leave blank to keep unchanged"
+                style="background: rgba(0,0,0,0.4);"
+              >
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem; padding: 0.75rem 1.5rem; font-weight: 700;">
+            💾 Save Access Credentials & Master PIN
+          </button>
+        </form>
       </div>
 
     </div>

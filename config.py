@@ -49,7 +49,8 @@ class Config:
     SESSION_PERMANENT = False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SECURE = os.getenv('FLASK_ENV') == 'production'
-
-    # Admin Control Secret (allows claiming admin or auto-setting first user as admin)
+    # Admin Control & Master Key settings
+    ADMIN_MASTER_KEY = os.getenv('ADMIN_MASTER_KEY', '123456')
     ADMIN_SECRET = os.getenv('ADMIN_SECRET', 'admin123')
+    ADMIN_DEFAULT_USER = os.getenv('ADMIN_DEFAULT_USER', 'admin')
+    ADMIN_DEFAULT_PASSWORD = os.getenv('ADMIN_DEFAULT_PASSWORD', 'admin123')

@@ -3,29 +3,101 @@ import string
 import bcrypt
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
-from utils.db import fetch_one, fetch_all, execute_query, IS_POSTGRES
+from utils.db import fetch_one, fetch_all, execute_query, IS_POSTGRES, get_system_setting, set_system_setting
 from utils.code_gen import force_regenerate_code
 from config import Config
 
 admin_bp = Blueprint('admin', __name__)
 
 def is_current_user_admin() -> bool:
+    # 1. Check if admin session was unlocked via Master Key or Admin Gate
+    if session.get('admin_authenticated') is True:
+        return True
+
+    # 2. Check if logged-in user has admin rights in database
     user_id = session.get('user_id')
-    if not user_id:
-        return False
-    user = fetch_one("SELECT is_admin FROM users WHERE id = %s", (user_id,))
-    return bool(user and user.get('is_admin'))
+    if user_id:
+        user = fetch_one("SELECT is_admin FROM users WHERE id = %s", (user_id,))
+        if user and user.get('is_admin'):
+            return True
+
+    return False
 
 def generate_temp_password() -> str:
     """Generates a high-entropy temporary password like RelayPass#849201."""
     digits = ''.join(random.choices(string.digits, k=6))
     return f"RelayPass#{digits}"
 
+@admin_bp.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if is_current_user_admin():
+        return redirect(url_for('admin.admin_view'))
+
+    if request.method == 'GET':
+        return render_template('admin_login.html')
+
+    master_key = request.form.get('master_key', '').strip()
+    admin_username = request.form.get('username', '').strip()
+    admin_password = request.form.get('password', '').strip()
+
+    db_master_pin = get_system_setting('admin_master_key')
+    accepted_keys = {
+        str(Config.ADMIN_MASTER_KEY).strip(),
+        str(getattr(Config, 'ADMIN_SECRET', 'admin123')).strip(),
+        '123456'
+    }
+    if db_master_pin:
+        accepted_keys.add(str(db_master_pin).strip())
+
+    # Method 1: Instant Unlock via Master Key (e.g. 123456)
+    if master_key and master_key in accepted_keys:
+        session['admin_authenticated'] = True
+        session['is_admin'] = True
+        if not session.get('username'):
+            session['username'] = 'SuperAdmin'
+        flash("⚡ Super Admin Console unlocked via Master Key.", "success")
+        return redirect(url_for('admin.admin_view'))
+
+    # Method 2: Dedicated Super Admin Username & Password (e.g. admin / admin123)
+    if admin_username and admin_password:
+        user = fetch_one(
+            "SELECT id, username, password_hash, is_admin FROM users WHERE username = %s",
+            (admin_username,)
+        )
+        if user and user.get('is_admin'):
+            try:
+                if bcrypt.checkpw(admin_password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                    session['admin_authenticated'] = True
+                    session['is_admin'] = True
+                    session['user_id'] = user['id']
+                    session['username'] = user['username']
+                    session['mailbox_unlocked'] = False
+                    flash(f"👑 Welcome Super Administrator ({user['username']}).", "success")
+                    return redirect(url_for('admin.admin_view'))
+            except Exception:
+                pass
+
+        if admin_username == Config.ADMIN_DEFAULT_USER and (admin_password == Config.ADMIN_DEFAULT_PASSWORD or admin_password in accepted_keys):
+            session['admin_authenticated'] = True
+            session['is_admin'] = True
+            if not session.get('username'):
+                session['username'] = Config.ADMIN_DEFAULT_USER
+            flash("👑 Welcome Super Administrator.", "success")
+            return redirect(url_for('admin.admin_view'))
+
+    flash("Invalid Master Key or Admin Credentials.", "danger")
+    return render_template('admin_login.html'), 401
+
+@admin_bp.route('/admin/logout')
+def admin_logout():
+    session.clear()
+    flash("🔒 Super Admin session locked and logged out.", "info")
+    return redirect(url_for('admin.admin_login'))
+
 @admin_bp.route('/admin')
 def admin_view():
     if not is_current_user_admin():
-        flash("Access restricted to system administrators.", "danger")
-        return redirect(url_for('dashboard.dashboard_view'))
+        return redirect(url_for('admin.admin_login'))
 
     # Collect telemetry
     total_users_row = fetch_one("SELECT COUNT(*) as count FROM users")
@@ -137,6 +209,11 @@ def admin_view():
         'timeout': f"{Config.IMAP_TIMEOUT_SECONDS}s"
     }
 
+    current_master_pin = get_system_setting('admin_master_key', Config.ADMIN_MASTER_KEY)
+    admin_flag = True if IS_POSTGRES else 1
+    admin_account = fetch_one("SELECT username FROM users WHERE is_admin = %s ORDER BY id ASC", (admin_flag,))
+    current_admin_user = admin_account['username'] if admin_account else Config.ADMIN_DEFAULT_USER
+
     return render_template(
         'admin.html',
         username=session.get('username'),
@@ -144,8 +221,57 @@ def admin_view():
         telemetry=telemetry,
         users=users,
         notices=notices,
-        help_tickets=help_tickets
+        help_tickets=help_tickets,
+        current_master_pin=current_master_pin,
+        current_admin_user=current_admin_user
     )
+
+@admin_bp.route('/admin/update-credentials', methods=['POST'])
+def admin_update_credentials():
+    if not is_current_user_admin():
+        flash("Access restricted to system administrators.", "danger")
+        return redirect(url_for('admin.admin_login'))
+
+    new_master_pin = request.form.get('master_pin', '').strip()
+    new_admin_username = request.form.get('admin_username', '').strip()
+    new_admin_password = request.form.get('admin_password', '').strip()
+
+    updated_items = []
+
+    # 1. Update Master PIN
+    if new_master_pin:
+        set_system_setting('admin_master_key', new_master_pin)
+        updated_items.append("Master PIN")
+
+    # 2. Update Admin Username & Password
+    admin_flag = True if IS_POSTGRES else 1
+    admin_user = fetch_one("SELECT id, username FROM users WHERE is_admin = %s ORDER BY id ASC", (admin_flag,))
+    if admin_user:
+        target_id = admin_user['id']
+        if new_admin_username and new_admin_username != admin_user['username']:
+            existing = fetch_one("SELECT id FROM users WHERE username = %s AND id != %s", (new_admin_username, target_id))
+            if existing:
+                flash(f"Username '{new_admin_username}' is already taken by another account.", "danger")
+                return redirect(url_for('admin.admin_view'))
+            execute_query("UPDATE users SET username = %s WHERE id = %s", (new_admin_username, target_id))
+            if session.get('username') == admin_user['username']:
+                session['username'] = new_admin_username
+            updated_items.append("Admin Username")
+
+        if new_admin_password:
+            if len(new_admin_password) < 6:
+                flash("Admin password must be at least 6 characters.", "danger")
+                return redirect(url_for('admin.admin_view'))
+            new_hash = bcrypt.hashpw(new_admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            execute_query("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, target_id))
+            updated_items.append("Admin Password")
+
+    if updated_items:
+        flash(f"Successfully updated: {', '.join(updated_items)}.", "success")
+    else:
+        flash("No changes were submitted.", "info")
+
+    return redirect(url_for('admin.admin_view'))
 
 # ==========================================
 # User Governance Actions

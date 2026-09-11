@@ -115,18 +115,23 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
-        is_admin = session.get('is_admin', False)
-        if 'user_id' in session and not is_admin:
+        is_admin = bool(session.get('admin_authenticated') or session.get('is_admin'))
+        user_id = session.get('user_id')
+        if user_id and not is_admin:
             from routers.admin_router import is_current_user_admin
             is_admin = is_current_user_admin()
             if is_admin:
                 session['is_admin'] = True
 
+        is_logged_in = bool(user_id or session.get('admin_authenticated') or is_admin)
+        current_user = session.get('username') or ('SuperAdmin' if is_admin else '')
+
         return {
             'app_name': 'RelayOTP',
             'app_version': '2.0.0',
-            'is_logged_in': 'user_id' in session,
-            'current_user': session.get('username'),
+            'is_logged_in': is_logged_in,
+            'current_user': current_user,
+            'current_user_id': user_id,
             'is_admin_session': is_admin
         }
 
@@ -137,6 +142,11 @@ def create_app():
             response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
+        
+        # Prevent back-button viewing of authenticated pages after logout
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0, private'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
         
         if 'frame-ancestors' not in response.headers.get('Content-Security-Policy', ''):
             response.headers['Content-Security-Policy'] = (

@@ -1881,3 +1881,155 @@ h1, h2, h3, h4, .brand-logo {
     letter-spacing: 0.15em;
   }
 }
+
+/* ============================================================ */
+/* Responsive Data Tables & Super Admin Action Toolbars        */
+/* ============================================================ */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th {
+  padding: 0.85rem 1rem;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-glass);
+  background: rgba(15, 23, 42, 0.6);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.data-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+/* Single-row responsive toolbar for Super Admin Actions */
+.admin-actions-toolbar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
+.admin-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text-main);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.admin-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.admin-action-btn:active {
+  transform: translateY(0);
+}
+
+.admin-action-btn.btn-suspend {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+}
+.admin-action-btn.btn-suspend:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #fbbf24;
+}
+
+.admin-action-btn.btn-reactivate {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+}
+.admin-action-btn.btn-reactivate:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #34d399;
+}
+
+.admin-action-btn.btn-reset {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.1);
+}
+.admin-action-btn.btn-reset:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+}
+
+.admin-action-btn.btn-code {
+  color: #c084fc;
+  border-color: rgba(192, 132, 252, 0.4);
+  background: rgba(192, 132, 252, 0.1);
+}
+.admin-action-btn.btn-code:hover {
+  background: rgba(192, 132, 252, 0.22);
+  border-color: #c084fc;
+}
+
+.admin-action-btn.btn-icon {
+  width: 32px;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.admin-action-btn.btn-role {
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+.admin-action-btn.btn-role:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: #94a3b8;
+  color: #fff;
+}
+
+.admin-action-btn.btn-delete {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+.admin-action-btn.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+}

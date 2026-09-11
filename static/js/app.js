@@ -53,12 +53,18 @@ function fallbackCopyText(text) {
   }
 }
 
-// Clipboard Handler with Tactile Visual Feedback & 30s Auto-Clear
+// Clipboard Handler with Tactile Visual Feedback & Configurable 30s Auto-Clear
 window.copyToClipboard = function(text, label = "Code", triggerButton = null) {
   if (!text) return;
 
+  const shouldAutoClear = localStorage.getItem('relay_pref_auto_clear') !== 'false';
+
   const onSuccess = () => {
-    window.showToast(`${label} copied! Clipboard will clear in 30s.`, 'success');
+    if (shouldAutoClear) {
+      window.showToast(`${label} copied! Clipboard will clear in 30s.`, 'success');
+    } else {
+      window.showToast(`${label} copied to clipboard!`, 'success');
+    }
 
     // Tactile button feedback
     if (triggerButton) {
@@ -71,14 +77,16 @@ window.copyToClipboard = function(text, label = "Code", triggerButton = null) {
       }, 2000);
     }
 
-    // 30s memory clear
-    setTimeout(() => {
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-        navigator.clipboard.writeText('').catch(() => {});
-      } else {
-        fallbackCopyText('');
-      }
-    }, 30000);
+    // 30s memory clear if enabled in Privacy Preferences
+    if (shouldAutoClear) {
+      setTimeout(() => {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          navigator.clipboard.writeText('').catch(() => {});
+        } else {
+          fallbackCopyText('');
+        }
+      }, 30000);
+    }
   };
 
   const onFail = () => {
@@ -835,5 +843,44 @@ window.dismissAdminNotice = function(noticeId) {
     setTimeout(() => el.remove(), 250);
   }
 };
+
+  // ==========================================
+  // 11. Workplace Privacy Preferences Handler
+  // ==========================================
+  const prefMask = document.getElementById('pref-mask-codes');
+  const prefAutoClear = document.getElementById('pref-auto-clear');
+
+  if (prefMask) {
+    prefMask.checked = localStorage.getItem('relay_pref_mask_codes') !== 'false';
+    prefMask.addEventListener('change', (e) => {
+      localStorage.setItem('relay_pref_mask_codes', e.target.checked ? 'true' : 'false');
+      window.showToast(e.target.checked ? 'Default code masking enabled' : 'Default code masking disabled (plain text)', 'info');
+    });
+  }
+
+  if (prefAutoClear) {
+    prefAutoClear.checked = localStorage.getItem('relay_pref_auto_clear') !== 'false';
+    prefAutoClear.addEventListener('change', (e) => {
+      localStorage.setItem('relay_pref_auto_clear', e.target.checked ? 'true' : 'false');
+      window.showToast(e.target.checked ? 'Clipboard auto-clear (30s) enabled' : 'Clipboard auto-clear disabled', 'info');
+    });
+  }
+
+  // If user disabled code masking by default in Privacy Preferences, reveal codes immediately on dashboard
+  if (localStorage.getItem('relay_pref_mask_codes') === 'false') {
+    document.querySelectorAll('.otp-box[data-masked="true"]').forEach(el => {
+      const code = el.getAttribute('data-code');
+      if (code) {
+        el.innerText = code;
+        el.setAttribute('data-masked', 'false');
+        const container = el.closest('.otp-code-group, .otp-box-mobile');
+        const btn = container ? container.querySelector('.btn-toggle-mask') : null;
+        if (btn) {
+          btn.innerHTML = '🙈';
+          btn.title = "Hide code";
+        }
+      }
+    });
+  }
 
 });

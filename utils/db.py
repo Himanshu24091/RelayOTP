@@ -303,6 +303,13 @@ def init_db():
             cursor.execute(admin_notices_sql)
             cursor.execute(user_notice_reads_sql)
             cursor.execute(help_requests_sql)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                setting_key VARCHAR(60) PRIMARY KEY,
+                setting_value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """)
             if IS_POSTGRES:
                 cursor.execute(index_sql)
             else:
@@ -338,3 +345,60 @@ def init_db():
             raise
         finally:
             cursor.close()
+
+    # Ensure dedicated Super Admin account exists
+    ensure_default_admin()
+
+
+def ensure_default_admin():
+    """Ensures a dedicated Super Admin account exists in the database."""
+    try:
+        import bcrypt
+        admin_username = Config.ADMIN_DEFAULT_USER
+        admin_pass = Config.ADMIN_DEFAULT_PASSWORD
+        existing = fetch_one("SELECT id, is_admin FROM users WHERE username = %s", (admin_username,))
+        if not existing:
+            hashed = bcrypt.hashpw(admin_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            execute_query(
+                "INSERT INTO users (username, password_hash, is_admin) VALUES (%s, %s, %s)",
+                (admin_username, hashed, True if IS_POSTGRES else 1)
+            )
+            print(f"[RelayOTP] Dedicated Super Admin account '{admin_username}' initialized.")
+        elif not existing.get('is_admin'):
+            execute_query("UPDATE users SET is_admin = %s WHERE id = %s", (True if IS_POSTGRES else 1, existing['id']))
+    except Exception as e:
+        print(f"[RelayOTP] Note on default admin init: {e}")
+
+
+def get_system_setting(key: str, default: str = None) -> str:
+    """Retrieves a persistent system configuration value."""
+    try:
+        row = fetch_one("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+        if row and row.get('setting_value') is not None:
+            return str(row['setting_value']).strip()
+    except Exception:
+        pass
+    return default
+
+
+def set_system_setting(key: str, value: str):
+    """Persists a system configuration key-value pair."""
+    if IS_POSTGRES:
+        execute_query(
+            """
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP
+            """,
+            (key, str(value).strip())
+        )
+    else:
+        execute_query(
+            """
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP
+            """,
+            (key, str(value).strip())
+        )
+

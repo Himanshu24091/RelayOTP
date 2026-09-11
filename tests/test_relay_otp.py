@@ -163,6 +163,7 @@ class RelayOTPTestCase(unittest.TestCase):
         user = fetch_one("SELECT id FROM users WHERE username = %s", ("regular_user",))
         # Even if first user was regular_user, let's explicitly set is_admin=False
         execute_query("UPDATE users SET is_admin = 0 WHERE id = %s", (user['id'],))
+        self.client.get('/logout')
 
         # Log in as regular user
         self.client.post('/login', data={
@@ -170,11 +171,19 @@ class RelayOTPTestCase(unittest.TestCase):
             'password': 'Password123!'
         }, follow_redirects=True)
 
-        # Admin page access should be denied
+        # Admin page access should redirect regular user to admin gateway
         admin_resp = self.client.get('/admin', follow_redirects=True)
-        self.assertIn(b"Access restricted to system administrators", admin_resp.data)
+        self.assertIn(b"Super Admin Gateway", admin_resp.data)
 
-        # Promote to admin
+        # Unlock using Master Key (123456)
+        unlock_resp = self.client.post('/admin/login', data={'master_key': '123456'}, follow_redirects=True)
+        self.assertEqual(unlock_resp.status_code, 200)
+        self.assertIn(b"Administrative Control Center", unlock_resp.data)
+
+        # Lock admin session again
+        self.client.get('/admin/logout')
+
+        # Promote to admin in DB
         execute_query("UPDATE users SET is_admin = 1 WHERE id = %s", (user['id'],))
         # Re-login to update session
         self.client.post('/login', data={

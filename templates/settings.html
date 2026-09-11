@@ -71,17 +71,23 @@
       </div>
 
       <div style="margin: 1.5rem 0; border-top: 1px solid var(--border-glass); padding-top: 1.25rem;">
-        <div style="font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">WORKPLACE PRIVACY PREFERENCES</div>
+        <div style="font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between;">
+          <span>WORKPLACE PRIVACY PREFERENCES</span>
+          <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: normal;">● Auto-saved to browser</span>
+        </div>
         
-        <label style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.6rem; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);">
-          <input type="checkbox" checked disabled>
-          Mask verification codes by default on Dashboard (••••••)
+        <label style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; cursor: pointer; font-size: 0.9rem; color: var(--text-main);">
+          <input type="checkbox" id="pref-mask-codes" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-purple);">
+          <span>Mask verification codes by default on Dashboard (••••••)</span>
         </label>
         
-        <label style="display: flex; align-items: center; gap: 0.65rem; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);">
-          <input type="checkbox" checked disabled>
-          Auto-clear clipboard memory 30 seconds after copying code
+        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; color: var(--text-main);">
+          <input type="checkbox" id="pref-auto-clear" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-purple);">
+          <span>Auto-clear clipboard memory 30 seconds after copying code</span>
         </label>
+        <div class="form-hint" style="margin-top: 0.5rem; font-size: 0.78rem;">
+          These preferences customize code visibility and memory scrubbing on this workstation.
+        </div>
       </div>
 
       <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">

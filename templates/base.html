@@ -32,14 +32,25 @@
         <span class="hamburger-bar"></span>
       </button>
 
-      {% if is_logged_in %}
+      {% if is_admin_session %}
+      <ul class="nav-links" id="nav-links">
+        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}" style="color: #fda4af; font-weight: 700; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.4); border-radius: 6px; padding: 0.3rem 0.65rem;">👑 Super Admin</a></li>
+        {% if current_user_id %}
+        <li><a href="{{ url_for('dashboard.dashboard_view') }}" class="nav-link">📊 User Dashboard</a></li>
+        {% endif %}
+        <li>
+          <div class="nav-user-badge" style="background: rgba(225, 29, 72, 0.15); border-color: rgba(225, 29, 72, 0.35);">
+            <span class="user-indicator" style="background: #f43f5e; box-shadow: 0 0 8px #f43f5e;"></span>
+            <span style="color: #fda4af; font-weight: 600;">👑 {{ current_user or 'SuperAdmin' }}</span>
+          </div>
+        </li>
+        <li><a href="{{ url_for('admin.admin_logout') }}" class="nav-link nav-link-logout" style="color: var(--accent-rose); font-weight: 700;">🚪 Logout</a></li>
+      </ul>
+      {% elif is_logged_in %}
       <ul class="nav-links" id="nav-links">
         <li><a href="{{ url_for('dashboard.dashboard_view') }}" class="nav-link {% if request.endpoint == 'dashboard.dashboard_view' %}active{% endif %}">📊 Dashboard</a></li>
         <li><a href="{{ url_for('profile.profile_view') }}" class="nav-link {% if request.endpoint == 'profile.profile_view' %}active{% endif %}">👤 Profile</a></li>
         <li><a href="{{ url_for('settings.settings_view') }}" class="nav-link {% if request.endpoint == 'settings.settings_view' %}active{% endif %}">⚙️ Settings</a></li>
-        {% if is_admin_session %}
-        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint.startswith('admin.') %}active{% endif %}" style="color: #fda4af; font-weight: 700; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.4); border-radius: 6px; padding: 0.3rem 0.65rem;">👑 Super Admin</a></li>
-        {% endif %}
         <li>
           <div class="nav-user-badge">
             <span class="user-indicator"></span>
@@ -159,6 +170,14 @@
 
   <script src="{{ url_for('static', filename='js/stealth.js') }}?v=2.8.0"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}?v=2.8.0"></script>
+  <script>
+    // Ensure browsers re-check session with server when navigated back via history
+    window.addEventListener('pageshow', function(e) {
+      if (e.persisted || (window.performance && window.performance.getEntriesByType && window.performance.getEntriesByType('navigation')[0] && window.performance.getEntriesByType('navigation')[0].type === 'back_forward')) {
+        window.location.reload();
+      }
+    });
+  </script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>
