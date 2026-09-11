@@ -824,4 +824,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+// Admin Notice Dismiss Handler
+window.dismissAdminNotice = function(noticeId) {
+  fetch('/api/notices/dismiss/' + noticeId, { method: 'POST' });
+  const el = document.getElementById('notice-card-' + noticeId);
+  if (el) {
+    el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px)';
+    setTimeout(() => el.remove(), 250);
+  }
+};
+
 });

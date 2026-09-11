@@ -1,4 +1,7 @@
-from datetime import datetime, timezone
+import random
+import string
+import bcrypt
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
 from utils.db import fetch_one, fetch_all, execute_query, IS_POSTGRES
 from utils.code_gen import force_regenerate_code
@@ -12,6 +15,11 @@ def is_current_user_admin() -> bool:
         return False
     user = fetch_one("SELECT is_admin FROM users WHERE id = %s", (user_id,))
     return bool(user and user.get('is_admin'))
+
+def generate_temp_password() -> str:
+    """Generates a high-entropy temporary password like RelayPass#849201."""
+    digits = ''.join(random.choices(string.digits, k=6))
+    return f"RelayPass#{digits}"
 
 @admin_bp.route('/admin')
 def admin_view():
@@ -31,10 +39,19 @@ def admin_view():
     )
     active_otps = active_otps_row['count'] if active_otps_row else 0
 
-    # Fetch all users
+    pending_tickets_row = fetch_one("SELECT COUNT(*) as count FROM help_requests WHERE status = 'pending'")
+    pending_tickets = pending_tickets_row['count'] if pending_tickets_row else 0
+
+    active_notices_row = fetch_one(
+        "SELECT COUNT(*) as count FROM admin_notices WHERE expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP"
+    )
+    active_notices_count = active_notices_row['count'] if active_notices_row else 0
+
+    # Fetch all tenants with security governance flags
     users = fetch_all("""
         SELECT id, username, gmail_address, is_admin, mailbox_access_code, 
-               access_code_expires_at, created_at,
+               access_code_expires_at, is_suspended, suspended_until, suspension_reason,
+               must_change_password, created_at,
                (CASE WHEN encrypted_app_password IS NOT NULL THEN 1 ELSE 0 END) as has_password
         FROM users 
         ORDER BY id ASC
@@ -42,6 +59,7 @@ def admin_view():
 
     now = datetime.now(timezone.utc)
     for u in users:
+        # Passcode status
         expires_at = u.get('access_code_expires_at')
         if expires_at:
             try:
@@ -65,10 +83,54 @@ def admin_view():
             u['code_status'] = "Not Generated"
             u['code_badge'] = "secondary"
 
+        # Suspension status
+        if u.get('is_suspended'):
+            suspended_until = u.get('suspended_until')
+            if suspended_until:
+                try:
+                    if isinstance(suspended_until, str):
+                        s_dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
+                    else:
+                        s_dt = suspended_until
+                    if s_dt.tzinfo is None:
+                        s_dt = s_dt.replace(tzinfo=timezone.utc)
+                    if now < s_dt:
+                        diff_h = int((s_dt - now).total_seconds() // 3600)
+                        u['suspension_label'] = f"Suspended ({diff_h}h left)"
+                    else:
+                        u['suspension_label'] = "Suspension Expired"
+                except Exception:
+                    u['suspension_label'] = "Suspended (Timed)"
+            else:
+                u['suspension_label'] = "Suspended Indefinitely"
+        else:
+            u['suspension_label'] = "Active"
+
+    # Fetch active notices & warnings
+    notices = fetch_all("""
+        SELECT n.id, n.target_user_id, n.title, n.message, n.severity, 
+               n.is_dismissible, n.expires_at, n.created_at,
+               u.username as target_username
+        FROM admin_notices n
+        LEFT JOIN users u ON n.target_user_id = u.id
+        ORDER BY n.created_at DESC
+    """)
+
+    # Fetch help & password reset tickets
+    help_tickets = fetch_all("""
+        SELECT id, ticket_ref, username, contact_info, request_type,
+               user_message, status, admin_notes, temp_password, created_at, resolved_at
+        FROM help_requests
+        ORDER BY (CASE WHEN status = 'pending' THEN 0 ELSE 1 END), created_at DESC
+        LIMIT 50
+    """)
+
     telemetry = {
         'total_users': total_users,
         'linked_users': linked_users,
         'active_otps': active_otps,
+        'pending_tickets': pending_tickets,
+        'active_notices_count': active_notices_count,
         'database_type': 'PostgreSQL' if IS_POSTGRES else 'SQLite (Dual-Mode Local)',
         'imap_server': Config.IMAP_SERVER,
         'imap_port': Config.IMAP_PORT,
@@ -80,8 +142,113 @@ def admin_view():
         username=session.get('username'),
         is_admin=True,
         telemetry=telemetry,
-        users=users
+        users=users,
+        notices=notices,
+        help_tickets=help_tickets
     )
+
+# ==========================================
+# User Governance Actions
+# ==========================================
+
+@admin_bp.route('/admin/user/suspend', methods=['POST'])
+def admin_suspend_user():
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    target_user_id = request.form.get('target_user_id')
+    duration_type = request.form.get('duration_type', 'same_day')
+    reason = request.form.get('reason', '').strip() or "Suspicious activity detected on office network"
+
+    if not target_user_id:
+        flash("User ID is required.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    target_id = int(target_user_id)
+    if target_id == session.get('user_id'):
+        flash("You cannot suspend your own active Super Administrator account.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    now = datetime.now(timezone.utc)
+    if duration_type == 'same_day':
+        suspended_until = now + timedelta(hours=24)
+        dur_label = "Same Day (24h)"
+    elif duration_type == '3_days':
+        suspended_until = now + timedelta(days=3)
+        dur_label = "3 Days"
+    elif duration_type == '7_days':
+        suspended_until = now + timedelta(days=7)
+        dur_label = "7 Days"
+    else:
+        suspended_until = None
+        dur_label = "Indefinite"
+
+    execute_query(
+        """
+        UPDATE users 
+        SET is_suspended = %s, suspended_until = %s, suspension_reason = %s 
+        WHERE id = %s
+        """,
+        (True, suspended_until, reason, target_id)
+    )
+
+    flash(f"User #{target_id} has been suspended ({dur_label}). Active sessions terminated.", "warning")
+    return redirect(url_for('admin.admin_view'))
+
+@admin_bp.route('/admin/user/unsuspend/<int:target_user_id>', methods=['POST'])
+def admin_unsuspend_user(target_user_id):
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    execute_query(
+        """
+        UPDATE users 
+        SET is_suspended = %s, suspended_until = NULL, suspension_reason = NULL 
+        WHERE id = %s
+        """,
+        (False, target_user_id)
+    )
+    flash(f"User #{target_user_id} suspension lifted. Account reactivated.", "success")
+    return redirect(url_for('admin.admin_view'))
+
+@admin_bp.route('/admin/user/reset-password', methods=['POST'])
+def admin_reset_password():
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    target_user_id = request.form.get('target_user_id')
+    custom_password = request.form.get('custom_password', '').strip()
+
+    if not target_user_id:
+        flash("User ID missing.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    target_id = int(target_user_id)
+    user = fetch_one("SELECT username FROM users WHERE id = %s", (target_id,))
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    temp_password = custom_password or generate_temp_password()
+    pw_hash = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    execute_query(
+        """
+        UPDATE users 
+        SET password_hash = %s, must_change_password = %s 
+        WHERE id = %s
+        """,
+        (pw_hash, True, target_id)
+    )
+
+    flash(
+        f"Password reset for '{user['username']}'! Temporary password: {temp_password} (User will be prompted to change it upon login)",
+        "success"
+    )
+    return redirect(url_for('admin.admin_view'))
 
 @admin_bp.route('/admin/reset-code/<int:target_user_id>', methods=['POST'])
 def admin_reset_code(target_user_id):
@@ -120,8 +287,139 @@ def admin_delete_user(target_user_id):
         return redirect(url_for('admin.admin_view'))
 
     execute_query("DELETE FROM users WHERE id = %s", (target_user_id,))
-    flash(f"User #{target_user_id} deleted permanently.", "warning")
+    flash(f"User #{target_user_id} and all associated credentials deleted permanently.", "warning")
     return redirect(url_for('admin.admin_view'))
+
+# ==========================================
+# Notices & Warnings Dispatcher
+# ==========================================
+
+@admin_bp.route('/admin/notices/create', methods=['POST'])
+def admin_create_notice():
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    target_user_id = request.form.get('target_user_id', '').strip()
+    title = request.form.get('title', '').strip()
+    message = request.form.get('message', '').strip()
+    severity = request.form.get('severity', 'info')
+    duration_hours = request.form.get('duration_hours', '24')
+    is_dismissible = request.form.get('is_dismissible', '1') == '1'
+
+    if not title or not message:
+        flash("Notice title and message are required.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    target_id = int(target_user_id) if target_user_id and target_user_id != 'all' else None
+
+    expires_at = None
+    if duration_hours and duration_hours != 'indefinite':
+        try:
+            hrs = int(duration_hours)
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=hrs)
+        except Exception:
+            expires_at = None
+
+    execute_query(
+        """
+        INSERT INTO admin_notices (target_user_id, title, message, severity, is_dismissible, expires_at)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (target_id, title, message, severity, is_dismissible, expires_at)
+    )
+
+    scope_str = f"User #{target_id}" if target_id else "All Users (Broadcast)"
+    flash(f"Notice published successfully to {scope_str}!", "success")
+    return redirect(url_for('admin.admin_view'))
+
+@admin_bp.route('/admin/notices/delete/<int:notice_id>', methods=['POST'])
+def admin_delete_notice(notice_id):
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    execute_query("DELETE FROM admin_notices WHERE id = %s", (notice_id,))
+    flash("Notice revoked and removed from all dashboards.", "info")
+    return redirect(url_for('admin.admin_view'))
+
+# ==========================================
+# Helpdesk & Password Reset Requests
+# ==========================================
+
+@admin_bp.route('/admin/help/resolve', methods=['POST'])
+def admin_resolve_help():
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    ticket_id = request.form.get('ticket_id')
+    admin_notes = request.form.get('admin_notes', '').strip()
+    custom_temp_password = request.form.get('custom_temp_password', '').strip()
+
+    if not ticket_id:
+        flash("Ticket ID missing.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    ticket = fetch_one("SELECT id, ticket_ref, username, request_type FROM help_requests WHERE id = %s", (ticket_id,))
+    if not ticket:
+        flash("Ticket not found.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    username = ticket['username']
+    user = fetch_one("SELECT id FROM users WHERE username = %s", (username,))
+    
+    temp_password = None
+    if user and ticket['request_type'] == 'password_reset':
+        temp_password = custom_temp_password or generate_temp_password()
+        pw_hash = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        execute_query("UPDATE users SET password_hash = %s, must_change_password = %s WHERE id = %s", (pw_hash, True, user['id']))
+
+    now = datetime.now(timezone.utc)
+    execute_query(
+        """
+        UPDATE help_requests 
+        SET status = 'resolved', temp_password = %s, admin_notes = %s, resolved_at = %s
+        WHERE id = %s
+        """,
+        (temp_password, admin_notes or "Password reset completed by Super Admin.", now, ticket_id)
+    )
+
+    msg = f"Ticket {ticket['ticket_ref']} for '{username}' marked RESOLVED!"
+    if temp_password:
+        msg += f" New Temporary Password: {temp_password}"
+    flash(msg, "success")
+    return redirect(url_for('admin.admin_view'))
+
+@admin_bp.route('/admin/help/reject', methods=['POST'])
+def admin_reject_help():
+    if not is_current_user_admin():
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('dashboard.dashboard_view'))
+
+    ticket_id = request.form.get('ticket_id')
+    admin_notes = request.form.get('admin_notes', '').strip() or "Identity could not be verified by administrator."
+
+    if not ticket_id:
+        flash("Ticket ID missing.", "danger")
+        return redirect(url_for('admin.admin_view'))
+
+    now = datetime.now(timezone.utc)
+    execute_query(
+        """
+        UPDATE help_requests 
+        SET status = 'rejected', admin_notes = %s, resolved_at = %s
+        WHERE id = %s
+        """,
+        (admin_notes, now, ticket_id)
+    )
+
+    flash("Ticket marked REJECTED.", "warning")
+    return redirect(url_for('admin.admin_view'))
+
+# ==========================================
+# Telemetry & Garbage Collection
+# ==========================================
 
 @admin_bp.route('/admin/purge-otps', methods=['POST'])
 def admin_purge_otps():

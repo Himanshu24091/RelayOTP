@@ -32,7 +32,7 @@
         <li><a href="{{ url_for('profile.profile_view') }}" class="nav-link {% if request.endpoint == 'profile.profile_view' %}active{% endif %}">👤 Profile</a></li>
         <li><a href="{{ url_for('settings.settings_view') }}" class="nav-link {% if request.endpoint == 'settings.settings_view' %}active{% endif %}">⚙️ Settings</a></li>
         {% if is_admin_session %}
-        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint.startswith('admin.') %}active{% endif %}" style="color: var(--accent-cyan);">🛡️ Admin</a></li>
+        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint.startswith('admin.') %}active{% endif %}" style="color: #fda4af; font-weight: 700; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.4); border-radius: 6px; padding: 0.3rem 0.65rem;">👑 Super Admin</a></li>
         {% endif %}
         <li>
           <div class="nav-user-badge">
@@ -44,6 +44,7 @@
       </ul>
       {% else %}
       <ul class="nav-links" id="nav-links">
+        <li><a href="{{ url_for('help.help_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('help.') %}active{% endif %}">🛎️ Help Desk</a></li>
         <li><a href="{{ url_for('auth.login') }}" class="nav-link">Log In</a></li>
         <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Create Account</a></li>
       </ul>

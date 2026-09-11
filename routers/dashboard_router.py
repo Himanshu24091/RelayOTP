@@ -85,6 +85,20 @@ def dashboard_view():
                 'time_ago': time_ago
             })
 
+    # Fetch active notices: broadcast (target_user_id IS NULL) OR targeted to this user
+    # excluding those already dismissed by this user
+    active_notices = fetch_all(
+        """
+        SELECT n.id, n.title, n.message, n.severity, n.is_dismissible, n.created_at
+        FROM admin_notices n
+        WHERE (n.target_user_id IS NULL OR n.target_user_id = %s)
+          AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+          AND n.id NOT IN (SELECT notice_id FROM user_notice_reads WHERE user_id = %s)
+        ORDER BY n.created_at DESC
+        """,
+        (user_id, user_id)
+    )
+
     return render_template(
         'dashboard.html',
         username=user['username'],
@@ -93,5 +107,21 @@ def dashboard_view():
         has_credentials=has_credentials,
         masked_gmail=masked_gmail,
         code_info=code_info,
-        otps=otps
+        otps=otps,
+        active_notices=active_notices
     )
+
+@dashboard_bp.route('/api/notices/dismiss/<int:notice_id>', methods=['POST'])
+def dismiss_notice(notice_id):
+    from flask import jsonify
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    try:
+        execute_query(
+            "INSERT INTO user_notice_reads (notice_id, user_id) VALUES (%s, %s)",
+            (notice_id, user_id)
+        )
+        return jsonify({'success': True}), 200
+    except Exception:
+        return jsonify({'success': True}), 200

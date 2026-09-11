@@ -1,167 +1,710 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Control Center - RelayOTP{% endblock %}
+{% block title %}Super Admin Command Console - RelayOTP{% endblock %}
 
 {% block content %}
-<div style="max-width: 1100px; margin: 1.5rem auto;">
+<div class="admin-console-wrapper" style="max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem;">
 
-  <!-- Admin Title Banner -->
-  <div class="card" style="border-color: rgba(6, 182, 212, 0.3); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08));">
+  <!-- Super Admin Command Banner -->
+  <div class="card" style="border-color: rgba(225, 29, 72, 0.4); background: linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(15, 23, 42, 0.95)); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(225, 29, 72, 0.1);">
     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <h1 class="card-title" style="font-size: 1.5rem; color: #fff;">
-          🛡️ Administrative Control Center
-        </h1>
-        <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem;">
-          Multi-tenant user governance, 12-hour passcode lifecycle controls, and system telemetry
-        </p>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(225, 29, 72, 0.2); border: 1px solid rgba(225, 29, 72, 0.5); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);">
+          👑
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <h1 class="card-title" style="font-size: 1.5rem; color: #fff; margin: 0;">
+              SUPER ADMIN COMMAND CONSOLE
+            </h1>
+            <span style="font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 999px; background: rgba(225, 29, 72, 0.25); color: #fda4af; border: 1px solid rgba(225, 29, 72, 0.5); font-weight: 700; letter-spacing: 0.05em;">
+              Administrative Control Center
+            </span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.86rem; margin-top: 0.35rem;">
+            Total tenant governance, live account suspensions, broadcast & targeted notices, and password reset helpdesk.
+          </p>
+        </div>
       </div>
-      <div>
-        <span class="status-pill success" style="font-size: 0.85rem;">
-          ● Gateway Online
-        </span>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-secondary btn-sm">
+          📊 Back to User Dashboard
+        </a>
       </div>
     </div>
   </div>
 
   <!-- Telemetry Metrics Grid -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
     
-    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
-      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Total Users</div>
-      <div style="font-size: 2rem; font-weight: 700; color: #fff; margin-top: 0.25rem;">{{ telemetry.total_users }}</div>
+    <div class="card" style="margin-bottom: 0; padding: 1.15rem 1.25rem; border-color: rgba(255,255,255,0.08);">
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Total Tenants</div>
+      <div style="font-size: 1.9rem; font-weight: 700; color: #fff; margin-top: 0.25rem;">{{ telemetry.total_users }}</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Registered User IDs</div>
     </div>
 
-    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
-      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Linked Gmails</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.25rem;">{{ telemetry.linked_users }}</div>
+    <div class="card" style="margin-bottom: 0; padding: 1.15rem 1.25rem; border-color: rgba(56, 189, 248, 0.25);">
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Linked Gmails</div>
+      <div style="font-size: 1.9rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.25rem;">{{ telemetry.linked_users }}</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Active AES Vaults</div>
     </div>
 
-    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
-      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Active Ephemeral OTPs</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--accent-purple); margin-top: 0.25rem;">{{ telemetry.active_otps }}</div>
+    <div class="card" style="margin-bottom: 0; padding: 1.15rem 1.25rem; border-color: rgba(245, 158, 11, 0.25);">
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Pending Help Tickets</div>
+      <div style="font-size: 1.9rem; font-weight: 700; color: #fbbf24; margin-top: 0.25rem;">
+        {{ telemetry.pending_tickets }}
+        {% if telemetry.pending_tickets > 0 %}
+          <span style="font-size: 0.75rem; vertical-align: middle; padding: 0.2rem 0.5rem; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 999px; color: #fde68a;">Action Required</span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Password Resets / Inquiries</div>
     </div>
 
-    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
-      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Database Driver</div>
-      <div style="font-size: 1.05rem; font-weight: 600; color: var(--accent-emerald); margin-top: 0.5rem;">{{ telemetry.database_type }}</div>
+    <div class="card" style="margin-bottom: 0; padding: 1.15rem 1.25rem; border-color: rgba(168, 85, 247, 0.25);">
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Active Notices</div>
+      <div style="font-size: 1.9rem; font-weight: 700; color: var(--accent-purple); margin-top: 0.25rem;">{{ telemetry.active_notices_count }}</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Broadcasts & Warnings</div>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; padding: 1.15rem 1.25rem; border-color: rgba(16, 185, 129, 0.25);">
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Database Engine</div>
+      <div style="font-size: 1.05rem; font-weight: 700; color: var(--accent-emerald); margin-top: 0.6rem;">{{ telemetry.database_type }}</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">IMAP: {{ telemetry.imap_server }}</div>
     </div>
 
   </div>
 
-  <!-- Global Action Controls -->
-  <div class="card" style="padding: 1.25rem 1.75rem;">
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <div style="font-weight: 600; font-size: 1rem;">Global Gateway Maintenance</div>
-        <div style="font-size: 0.82rem; color: var(--text-muted);">
-          Execute instant garbage collection or emergency flushing across all tenants
+  <!-- Super Admin Tab Navigation -->
+  <div class="admin-tabs" style="display: flex; gap: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
+    <button type="button" class="btn btn-secondary admin-tab-btn active" id="tab-btn-users" onclick="switchAdminTab('users')" style="border-radius: 8px; font-weight: 700;">
+      👥 Tenant Governance ({{ users|length }})
+    </button>
+    <button type="button" class="btn btn-secondary admin-tab-btn" id="tab-btn-notices" onclick="switchAdminTab('notices')" style="border-radius: 8px; font-weight: 700;">
+      📢 Notices & Warnings Dispatcher ({{ notices|length }})
+    </button>
+    <button type="button" class="btn btn-secondary admin-tab-btn" id="tab-btn-help" onclick="switchAdminTab('help')" style="border-radius: 8px; font-weight: 700;">
+      🎫 Helpdesk & Password Resets
+      {% if telemetry.pending_tickets > 0 %}
+        <span style="background: #e11d48; color: #fff; padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.72rem; margin-left: 0.35rem;">{{ telemetry.pending_tickets }}</span>
+      {% endif %}
+    </button>
+    <button type="button" class="btn btn-secondary admin-tab-btn" id="tab-btn-maintenance" onclick="switchAdminTab('maintenance')" style="border-radius: 8px; font-weight: 700;">
+      ⚙️ Gateway Telemetry & Maintenance
+    </button>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 1: TENANT GOVERNANCE & CONTROL         -->
+  <!-- ========================================== -->
+  <div id="admin-pane-users" class="admin-pane">
+    <div class="card">
+      <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 class="card-title" style="font-size: 1.25rem;">👥 Registered Tenant Accounts</h2>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Full administrative control over user accounts: instant suspensions, permanent deletions, direct password resets, and 12-hour passcodes.
+          </div>
+        </div>
+        <div>
+          <input type="text" id="tenant-search-box" class="form-input mono" placeholder="🔍 Search tenant by username..." style="max-width: 260px; padding: 0.45rem 0.85rem; font-size: 0.82rem;" onkeyup="filterTenantsTable()">
         </div>
       </div>
-      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <form method="POST" action="{{ url_for('admin.admin_purge_otps') }}">
-          <button type="submit" class="btn btn-secondary btn-sm">
-            🧹 Purge Expired OTPs
-          </button>
-        </form>
-        <form method="POST" action="{{ url_for('admin.admin_flush_all_otps') }}" onsubmit="return confirm('Emergency Flush: purge all OTPs for every tenant right now?');">
-          <button type="submit" class="btn btn-danger btn-sm">
-            ⚡ Flush All Active OTPs
-          </button>
-        </form>
+
+      <div class="table-responsive">
+        <table class="data-table" id="tenants-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>Gmail Vault</th>
+              <th>12h Passcode</th>
+              <th style="text-align: right;">Super Admin Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr id="tenant-row-{{ u.id }}" data-username="{{ u.username|lower }}">
+              <td style="color: var(--text-subtle); font-size: 0.85rem;">#{{ u.id }}</td>
+              <td>
+                <div style="font-weight: 700; color: #fff; font-size: 0.95rem;">{{ u.username }}</div>
+                {% if u.must_change_password %}
+                  <span style="font-size: 0.7rem; color: #fbbf24;">● Temp Password Active</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.is_suspended %}
+                  <span class="status-pill danger" style="font-size: 0.75rem;" title="Reason: {{ u.suspension_reason or 'None' }}">
+                    🚫 {{ u.suspension_label }}
+                  </span>
+                  {% if u.suspension_reason %}
+                    <div style="font-size: 0.7rem; color: #fca5a5; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      {{ u.suspension_reason }}
+                    </div>
+                  {% endif %}
+                {% else %}
+                  <span class="status-pill success" style="font-size: 0.75rem;">
+                    🟢 Active
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.is_admin %}
+                  <span class="status-pill info" style="font-size: 0.72rem;">👑 Super Admin</span>
+                {% else %}
+                  <span class="status-pill" style="font-size: 0.72rem; background: rgba(255,255,255,0.06); color: var(--text-muted);">Tenant</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.has_password and u.gmail_address %}
+                  <span class="status-pill success" style="font-size: 0.72rem;">🟢 Linked</span>
+                {% else %}
+                  <span class="status-pill warning" style="font-size: 0.72rem;">⚠️ None</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="mono" style="font-weight: 700; color: var(--accent-cyan);">
+                  {{ u.mailbox_access_code or 'None' }}
+                </span>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ u.code_status }}</div>
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
+                  
+                  <!-- Suspension / Lift Button -->
+                  {% if u.is_suspended %}
+                    <form method="POST" action="{{ url_for('admin.admin_unsuspend_user', target_user_id=u.id) }}" style="display:inline;">
+                      <button type="submit" class="btn btn-secondary btn-sm" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4);" title="Lift suspension immediately">
+                        🟢 Reactivate
+                      </button>
+                    </form>
+                  {% else %}
+                    <button type="button" class="btn btn-secondary btn-sm" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" onclick="openSuspendModal({{ u.id }}, '{{ u.username }}')" title="Suspend account for suspicious activity">
+                      🚫 Suspend
+                    </button>
+                  {% endif %}
+
+                  <!-- Direct Password Reset Button -->
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="openResetPasswordModal({{ u.id }}, '{{ u.username }}')" title="Reset master password for this user">
+                    🔑 Reset PW
+                  </button>
+
+                  <!-- Reset 12h Code -->
+                  <form method="POST" action="{{ url_for('admin.admin_reset_code', target_user_id=u.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-secondary btn-sm" title="Force generate a new 12h passcode">
+                      🔄 12h Code
+                    </button>
+                  </form>
+
+                  <!-- Toggle Admin Role -->
+                  <form method="POST" action="{{ url_for('admin.admin_toggle_role', target_user_id=u.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-secondary btn-sm" title="Toggle Admin / Regular User role">
+                      🛡️
+                    </button>
+                  </form>
+
+                  <!-- Delete User -->
+                  <form method="POST" action="{{ url_for('admin.admin_delete_user', target_user_id=u.id) }}" style="display:inline;"
+                        onsubmit="return confirm('PERMANENT DELETION: Are you sure you want to permanently delete tenant {{ u.username }} and all associated data? This cannot be undone.');">
+                    <button type="submit" class="btn btn-danger btn-sm" title="Delete User Permanently">
+                      🗑️
+                    </button>
+                  </form>
+
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+
     </div>
   </div>
 
-  <!-- Multi-Tenant User Management -->
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h2 class="card-title">👥 Registered Portal Tenants</h2>
-        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
-          Manage user credentials, promote administrators, and inspect or revoke 12-hour passcodes
-        </div>
+  <!-- ========================================== -->
+  <!-- TAB 2: NOTICES & WARNINGS DISPATCHER       -->
+  <!-- ========================================== -->
+  <div id="admin-pane-notices" class="admin-pane" style="display: none;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+      
+      <!-- Compose Notice Form -->
+      <div class="card" style="margin-bottom: 0;">
+        <h2 class="card-title" style="font-size: 1.2rem; margin-bottom: 0.25rem;">📢 Dispatch Notice / Warning</h2>
+        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 1.25rem;">
+          Send broadcast banners or targeted security warnings that appear at the top of user dashboards.
+        </p>
+
+        <form method="POST" action="{{ url_for('admin.admin_create_notice') }}">
+          
+          <div class="form-group">
+            <label for="notice_target" class="form-label">Target Recipient</label>
+            <select id="notice_target" name="target_user_id" class="form-input">
+              <option value="all">📢 All Tenants (Global Broadcast)</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">👤 {{ u.username }} (#{{ u.id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="notice_severity" class="form-label">Notice Type / Severity</label>
+            <select id="notice_severity" name="severity" class="form-input">
+              <option value="info">ℹ️ System Notice (Blue)</option>
+              <option value="reminder">⏰ Timed Reminder (Cyan)</option>
+              <option value="warning">⚠️ Warning / Security Alert (Amber)</option>
+              <option value="danger">🚨 Critical Security Restriction (Red)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="notice_title" class="form-label">Notice Title *</label>
+            <input type="text" id="notice_title" name="title" class="form-input" placeholder="e.g. Scheduled Network Maintenance or ⚠️ Suspicious Session Flagged" required>
+          </div>
+
+          <div class="form-group">
+            <label for="notice_message" class="form-label">Message Content *</label>
+            <textarea id="notice_message" name="message" class="form-input" rows="3" placeholder="Provide detailed context or instructions for the user..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="notice_duration" class="form-label">Display Duration (Timer)</label>
+            <select id="notice_duration" name="duration_hours" class="form-input">
+              <option value="1">1 Hour</option>
+              <option value="6">6 Hours</option>
+              <option value="24" selected>24 Hours (Same Day)</option>
+              <option value="72">3 Days</option>
+              <option value="168">7 Days</option>
+              <option value="indefinite">Indefinite (Until Manually Revoked)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.6rem;">
+            <input type="checkbox" id="notice_dismissible" name="is_dismissible" value="1" checked style="width: auto; margin: 0;">
+            <label for="notice_dismissible" style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+              Allow users to dismiss this notice from their dashboard
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+            🚀 DISPATCH NOTICE NOW
+          </button>
+
+        </form>
       </div>
-    </div>
 
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Role</th>
-            <th>Gmail Vault</th>
-            <th>12-Hour Passcode</th>
-            <th>Passcode Status</th>
-            <th style="text-align: right;">Administrative Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in users %}
-          <tr>
-            <td style="color: var(--text-subtle); font-size: 0.85rem;">#{{ u.id }}</td>
-            <td style="font-weight: 600; color: #fff;">
-              {{ u.username }}
-            </td>
-            <td>
-              {% if u.is_admin %}
-                <span class="status-pill info" style="font-size: 0.72rem;">🛡️ Admin</span>
-              {% else %}
-                <span class="status-pill" style="font-size: 0.72rem; background: rgba(255,255,255,0.06); color: var(--text-muted);">User</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if u.has_password and u.gmail_address %}
-                <span class="status-pill success" style="font-size: 0.72rem;">🟢 Linked</span>
-              {% else %}
-                <span class="status-pill warning" style="font-size: 0.72rem;">⚠️ None</span>
-              {% endif %}
-            </td>
-            <td>
-              <span class="mono" style="font-weight: 700; color: var(--accent-cyan);">
-                {{ u.mailbox_access_code or 'None' }}
-              </span>
-            </td>
-            <td>
-              <span class="status-pill {{ u.code_badge }}" style="font-size: 0.75rem;">
-                {{ u.code_status }}
-              </span>
-            </td>
-            <td style="text-align: right;">
-              <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end;">
-                
-                <!-- Reset 12h code -->
-                <form method="POST" action="{{ url_for('admin.admin_reset_code', target_user_id=u.id) }}" style="display:inline;">
-                  <button type="submit" class="btn btn-secondary btn-sm" title="Force generate a new 12h passcode for this user">
-                    🔄 Reset Code
-                  </button>
-                </form>
+      <!-- Active Notices Stream -->
+      <div class="card" style="margin-bottom: 0;">
+        <h2 class="card-title" style="font-size: 1.2rem; margin-bottom: 0.25rem;">📋 Active Notices Feed</h2>
+        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 1.25rem;">
+          Currently active broadcast banners and targeted warnings.
+        </p>
 
-                <!-- Toggle Admin -->
-                <form method="POST" action="{{ url_for('admin.admin_toggle_role', target_user_id=u.id) }}" style="display:inline;">
-                  <button type="submit" class="btn btn-secondary btn-sm" title="Toggle Admin / Regular User role">
-                    🛡️
-                  </button>
-                </form>
-
-                <!-- Delete User -->
-                <form method="POST" action="{{ url_for('admin.admin_delete_user', target_user_id=u.id) }}" style="display:inline;"
-                      onsubmit="return confirm('Permanently delete tenant {{ u.username }} and all associated data?');">
-                  <button type="submit" class="btn btn-danger btn-sm" title="Delete User">
-                    🗑️
-                  </button>
-                </form>
-
+        {% if notices %}
+        <div style="display: flex; flex-direction: column; gap: 0.85rem; max-height: 600px; overflow-y: auto;">
+          {% for n in notices %}
+          <div style="border: 1px solid {% if n.severity == 'danger' %}rgba(239, 68, 68, 0.4){% elif n.severity == 'warning' %}rgba(245, 158, 11, 0.4){% elif n.severity == 'reminder' %}rgba(6, 182, 212, 0.4){% else %}rgba(99, 102, 241, 0.4){% endif %}; background: rgba(15, 23, 42, 0.8); border-radius: 10px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <span class="status-pill {% if n.severity == 'danger' %}danger{% elif n.severity == 'warning' %}warning{% elif n.severity == 'reminder' %}info{% else %}secondary{% endif %}" style="font-size: 0.72rem; text-transform: uppercase;">
+                  {{ n.severity }}
+                </span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.4rem;">
+                  Target: <strong>{{ n.target_username or 'All Users (Broadcast)' }}</strong>
+                </span>
               </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+              <form method="POST" action="{{ url_for('admin.admin_delete_notice', notice_id=n.id) }}" onsubmit="return confirm('Revoke this notice immediately?');">
+                <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">
+                  ✕ Revoke
+                </button>
+              </form>
+            </div>
 
+            <div style="font-weight: 700; color: #fff; font-size: 0.95rem; margin-top: 0.5rem;">
+              {{ n.title }}
+            </div>
+            <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 0.25rem; line-height: 1.4;">
+              {{ n.message }}
+            </div>
+
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.4rem;">
+              Created: {{ n.created_at }} &bull; Expires: {{ n.expires_at or 'Never' }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.6;">📭</div>
+          <div>No active notices currently dispatched.</div>
+        </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: HELPDESK & PASSWORD RESETS          -->
+  <!-- ========================================== -->
+  <div id="admin-pane-help" class="admin-pane" style="display: none;">
+    <div class="card">
+      <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 class="card-title" style="font-size: 1.25rem;">🎫 User Password Reset & Support Tickets</h2>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Incoming requests from users who forgot their master passwords or requested assistance via the Help Desk.
+          </div>
+        </div>
+      </div>
+
+      {% if help_tickets %}
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ref #</th>
+              <th>Username</th>
+              <th>Category</th>
+              <th>Message / Context</th>
+              <th>Alt Contact</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in help_tickets %}
+            <tr style="{% if t.status == 'pending' %}background: rgba(245, 158, 11, 0.05);{% endif %}">
+              <td class="mono" style="font-weight: 700; color: var(--accent-cyan); font-size: 0.85rem;">
+                {{ t.ticket_ref }}
+              </td>
+              <td style="font-weight: 600; color: #fff;">
+                {{ t.username }}
+              </td>
+              <td>
+                <span class="status-pill {% if t.request_type == 'password_reset' %}info{% elif t.request_type == 'suspension_appeal' %}warning{% else %}secondary{% endif %}" style="font-size: 0.72rem;">
+                  {{ t.request_type|replace('_', ' ')|title }}
+                </span>
+              </td>
+              <td style="max-width: 280px;">
+                <div style="font-size: 0.84rem; color: #cbd5e1; line-height: 1.35;">{{ t.user_message }}</div>
+                {% if t.admin_notes %}
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    <strong>Resolution:</strong> {{ t.admin_notes }}
+                  </div>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.82rem; color: var(--text-muted);">
+                {{ t.contact_info or 'None provided' }}
+              </td>
+              <td>
+                {% if t.status == 'pending' %}
+                  <span class="status-pill warning" style="font-size: 0.72rem;">
+                    <span class="pulse-dot yellow"></span> Pending
+                  </span>
+                {% elif t.status == 'resolved' %}
+                  <span class="status-pill success" style="font-size: 0.72rem;">
+                    ✓ Resolved
+                  </span>
+                {% else %}
+                  <span class="status-pill danger" style="font-size: 0.72rem;">
+                    ✕ Rejected
+                  </span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                {% if t.status == 'pending' %}
+                <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end;">
+                  
+                  <button type="button" class="btn btn-primary btn-sm" onclick="openResolveTicketModal({{ t.id }}, '{{ t.ticket_ref }}', '{{ t.username }}')" title="Reset user password and mark ticket resolved">
+                    🔑 Reset & Inform
+                  </button>
+
+                  <form method="POST" action="{{ url_for('admin.admin_reject_help') }}" style="display:inline;" onsubmit="return confirm('Reject ticket {{ t.ticket_ref }}?');">
+                    <input type="hidden" name="ticket_id" value="{{ t.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" title="Reject ticket">
+                      ✕ Reject
+                    </button>
+                  </form>
+
+                </div>
+                {% else %}
+                  {% if t.temp_password %}
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyResolutionSlip('{{ t.username }}', '{{ t.ticket_ref }}', '{{ t.temp_password }}', this)" title="Copy resolution message to clipboard">
+                    📋 Copy Slip
+                  </button>
+                  {% else %}
+                  <span style="font-size: 0.76rem; color: var(--text-muted);">Closed</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem; opacity: 0.6;">📭</div>
+        <div style="font-weight: 600; color: #fff;">No Help Desk Tickets</div>
+        <div style="font-size: 0.85rem; margin-top: 0.25rem;">Users can submit requests via the <a href="{{ url_for('help.help_view') }}" target="_blank" style="color: var(--accent-cyan);">Help Portal</a>.</div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 4: MAINTENANCE & TELEMETRY             -->
+  <!-- ========================================== -->
+  <div id="admin-pane-maintenance" class="admin-pane" style="display: none;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title" style="font-size: 1.25rem;">⚙️ Gateway Garbage Collection & Maintenance</h2>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Emergency memory clearing, expired token purges, and server configurations.
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <form method="POST" action="{{ url_for('admin.admin_purge_otps') }}">
+          <button type="submit" class="btn btn-secondary" style="padding: 0.75rem 1.25rem;">
+            🧹 Purge Expired OTPs (>10m)
+          </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('admin.admin_flush_all_otps') }}" onsubmit="return confirm('EMERGENCY FLUSH: Are you sure you want to flush all active verification codes across all tenants?');">
+          <button type="submit" class="btn btn-danger" style="padding: 0.75rem 1.25rem;">
+            ⚡ Flush All Ephemeral OTPs Now
+          </button>
+        </form>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1.25rem;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem;">🔒 Server Architecture & Security Baseline</h3>
+        <ul style="color: #cbd5e1; font-size: 0.84rem; line-height: 1.7; padding-left: 1.25rem;">
+          <li><strong>Database Connection:</strong> {{ telemetry.database_type }} with automated connection pooling</li>
+          <li><strong>Gmail IMAP Engine:</strong> {{ telemetry.imap_server }}:{{ telemetry.imap_port }} (SSL/TLS, PEEK mode enforced)</li>
+          <li><strong>Timeout Threshold:</strong> {{ telemetry.timeout }}</li>
+          <li><strong>Credential Storage:</strong> AES-256 Fernet (In-Memory Decryption only during active fetch)</li>
+          <li><strong>Ephemeral Retention:</strong> 10-Minute hard TTL for all verification codes</li>
+        </ul>
+      </div>
+
+    </div>
   </div>
 
 </div>
+
+<!-- ========================================== -->
+<!-- MODAL 1: SUSPEND ACCOUNT MODAL             -->
+<!-- ========================================== -->
+<div class="modal-overlay" id="suspend-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 500px; text-align: left;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">
+      <h3 style="font-size: 1.2rem; color: #fbbf24; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        🚫 Suspend Tenant Account
+      </h3>
+      <button type="button" class="btn-close-modal" onclick="closeSuspendModal()">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.admin_suspend_user') }}">
+      <input type="hidden" id="suspend_target_user_id" name="target_user_id" value="">
+
+      <div style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 1.25rem;">
+        Suspending tenant: <strong id="suspend_modal_username" style="color: #fff;"></strong>. 
+        Active sessions will be invalidated immediately.
+      </div>
+
+      <div class="form-group">
+        <label for="suspend_duration_type" class="form-label">Suspension Duration</label>
+        <select id="suspend_duration_type" name="duration_type" class="form-input">
+          <option value="same_day">⏳ Same Day (24 Hours)</option>
+          <option value="3_days">3 Days</option>
+          <option value="7_days">7 Days</option>
+          <option value="indefinite">🚫 Indefinite (Until Super Admin Unlocks)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="suspend_reason" class="form-label">Suspension Reason (Shown to User)</label>
+        <textarea id="suspend_reason" name="reason" class="form-input" rows="3" placeholder="e.g. Suspicious concurrent logins observed or corporate network policy breach." required>Suspicious activity detected on office network</textarea>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+        <button type="submit" class="btn btn-danger">🚫 Confirm Suspension</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 2: RESET PASSWORD MODAL              -->
+<!-- ========================================== -->
+<div class="modal-overlay" id="reset-password-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 500px; text-align: left;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">
+      <h3 style="font-size: 1.2rem; color: var(--accent-cyan); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        🔑 Reset Tenant Password
+      </h3>
+      <button type="button" class="btn-close-modal" onclick="closeResetPasswordModal()">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.admin_reset_password') }}">
+      <input type="hidden" id="reset_target_user_id" name="target_user_id" value="">
+
+      <div style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 1.25rem;">
+        Resetting master password for: <strong id="reset_modal_username" style="color: #fff;"></strong>.
+      </div>
+
+      <div class="form-group">
+        <label for="custom_password" class="form-label">Custom Temporary Password (Optional)</label>
+        <input type="text" id="custom_password" name="custom_password" class="form-input mono" placeholder="Leave empty to auto-generate secure password">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+          If left blank, a random password like <code>RelayPass#738291</code> will be generated. User will be forced to change it on login.
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeResetPasswordModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">⚡ Execute Password Reset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 3: RESOLVE TICKET MODAL              -->
+<!-- ========================================== -->
+<div class="modal-overlay" id="resolve-ticket-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 520px; text-align: left;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">
+      <h3 style="font-size: 1.2rem; color: #34d399; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        ✅ Resolve Password Reset Ticket
+      </h3>
+      <button type="button" class="btn-close-modal" onclick="closeResolveTicketModal()">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.admin_resolve_help') }}">
+      <input type="hidden" id="resolve_ticket_id" name="ticket_id" value="">
+
+      <div style="font-size: 0.88rem; color: #cbd5e1; margin-bottom: 1.25rem;">
+        Resolving Ticket <strong id="resolve_ticket_ref" style="color: var(--accent-cyan);" class="mono"></strong> for tenant: <strong id="resolve_ticket_username" style="color: #fff;"></strong>.
+      </div>
+
+      <div class="form-group">
+        <label for="resolve_custom_temp_password" class="form-label">Temporary Password (Leave blank to auto-generate)</label>
+        <input type="text" id="resolve_custom_temp_password" name="custom_temp_password" class="form-input mono" placeholder="e.g. RelayPass#849201">
+      </div>
+
+      <div class="form-group">
+        <label for="resolve_admin_notes" class="form-label">Resolution Note / Instructions for User</label>
+        <textarea id="resolve_admin_notes" name="admin_notes" class="form-input" rows="3">Your password reset has been completed by the Super Administrator. Please log in with your temporary password and set a new personal password.</textarea>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeResolveTicketModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669);">
+          ✅ Complete Reset & Mark Resolved
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Tab Switching
+function switchAdminTab(tabName) {
+  const panes = ['users', 'notices', 'help', 'maintenance'];
+  panes.forEach(p => {
+    const paneEl = document.getElementById('admin-pane-' + p);
+    const btnEl = document.getElementById('tab-btn-' + p);
+    if (paneEl) paneEl.style.display = (p === tabName) ? 'block' : 'none';
+    if (btnEl) {
+      if (p === tabName) {
+        btnEl.classList.add('active');
+        btnEl.style.borderColor = 'var(--accent-cyan)';
+        btnEl.style.color = '#fff';
+        btnEl.style.background = 'rgba(6, 182, 212, 0.15)';
+      } else {
+        btnEl.classList.remove('active');
+        btnEl.style.borderColor = '';
+        btnEl.style.color = '';
+        btnEl.style.background = '';
+      }
+    }
+  });
+}
+
+// Live Search in Tenants Table
+function filterTenantsTable() {
+  const query = (document.getElementById('tenant-search-box').value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#tenants-table tbody tr');
+  rows.forEach(r => {
+    const username = r.getAttribute('data-username') || '';
+    r.style.display = username.includes(query) ? '' : 'none';
+  });
+}
+
+// Modals Logic
+function openSuspendModal(userId, username) {
+  document.getElementById('suspend_target_user_id').value = userId;
+  document.getElementById('suspend_modal_username').innerText = username + " (#" + userId + ")";
+  document.getElementById('suspend-modal').style.display = 'flex';
+}
+function closeSuspendModal() {
+  document.getElementById('suspend-modal').style.display = 'none';
+}
+
+function openResetPasswordModal(userId, username) {
+  document.getElementById('reset_target_user_id').value = userId;
+  document.getElementById('reset_modal_username').innerText = username + " (#" + userId + ")";
+  document.getElementById('reset-password-modal').style.display = 'flex';
+}
+function closeResetPasswordModal() {
+  document.getElementById('reset-password-modal').style.display = 'none';
+}
+
+function openResolveTicketModal(ticketId, ticketRef, username) {
+  document.getElementById('resolve_ticket_id').value = ticketId;
+  document.getElementById('resolve_ticket_ref').innerText = ticketRef;
+  document.getElementById('resolve_ticket_username').innerText = username;
+  document.getElementById('resolve-ticket-modal').style.display = 'flex';
+}
+function closeResolveTicketModal() {
+  document.getElementById('resolve-ticket-modal').style.display = 'none';
+}
+
+// Copy resolution slip
+function copyResolutionSlip(username, ticketRef, tempPassword, btn) {
+  const text = `Hello ${username},\nYour password reset request (${ticketRef}) has been resolved by Super Admin.\nYour Temporary Password is: ${tempPassword}\nPlease log in and update your password immediately.`;
+  if (window.copyToClipboard) {
+    window.copyToClipboard(text, "Resolution Slip", btn);
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig = btn.innerText;
+    btn.innerText = '✓ Copied!';
+    setTimeout(() => { btn.innerText = orig; }, 2000);
+  }
+}
+
+// Close modals on escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeSuspendModal();
+    closeResetPasswordModal();
+    closeResolveTicketModal();
+  }
+});
+</script>
 {% endblock %}

@@ -102,7 +102,14 @@ def login():
         flash("Please enter both username and password.", "danger")
         return render_template('login.html')
 
-    user = fetch_one("SELECT id, username, password_hash, is_admin, gmail_address, encrypted_app_password FROM users WHERE username = %s", (username,))
+    user = fetch_one(
+        """
+        SELECT id, username, password_hash, is_admin, gmail_address, encrypted_app_password,
+               is_suspended, suspended_until, suspension_reason, must_change_password
+        FROM users WHERE username = %s
+        """,
+        (username,)
+    )
     
     # Verify bcrypt hash
     pw_match = False
@@ -121,6 +128,35 @@ def login():
         flash("Invalid username or password.", "danger")
         return render_template('login.html'), 401
 
+    # Check account suspension
+    if user.get('is_suspended'):
+        from datetime import datetime, timezone
+        suspended_until = user.get('suspended_until')
+        now = datetime.now(timezone.utc)
+        is_still_suspended = True
+        if suspended_until:
+            try:
+                if isinstance(suspended_until, str):
+                    dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
+                else:
+                    dt = suspended_until
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if now >= dt:
+                    # Suspension expired, auto-lift
+                    execute_query("UPDATE users SET is_suspended = 0, suspended_until = NULL, suspension_reason = NULL WHERE id = %s", (user['id'],))
+                    is_still_suspended = False
+            except Exception:
+                pass
+
+        if is_still_suspended:
+            reason = user.get('suspension_reason') or 'Suspicious activity detected on network'
+            until_txt = ""
+            if suspended_until:
+                until_txt = f" (Active until {suspended_until})"
+            flash(f"🚫 Account Suspended by Super Admin{until_txt}. Reason: {reason}. Please contact your administrator using the Help Desk below.", "danger")
+            return render_template('login.html'), 403
+
     # Successful login: reset failed attempts
     rate_limiter.reset('login', rate_key)
 
@@ -132,6 +168,12 @@ def login():
     # Mailbox remains locked upon fresh login
     session['mailbox_unlocked'] = False
 
+    # Check if user must change their temporary password
+    if user.get('must_change_password'):
+        session['must_change_password'] = True
+        flash("You are using a temporary password. Please set a fresh personal master password.", "warning")
+        return redirect(url_for('auth.change_password'))
+
     # Ensure 12-hour code is active or generated
     ensure_active_code(user['id'])
 
@@ -141,6 +183,32 @@ def login():
         flash("Please connect your Gmail account in the Vault to activate verification code relay.", "info")
         return redirect(url_for('settings.settings_view'))
 
+    return redirect(url_for('dashboard.dashboard_view'))
+
+@auth_bp.route('/change-password', methods=['GET', 'POST'])
+def change_password():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'GET':
+        return render_template('change_password.html')
+
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+
+    if not new_password or len(new_password) < 8:
+        flash("New password must be at least 8 characters long.", "danger")
+        return render_template('change_password.html')
+
+    if new_password != confirm_password:
+        flash("Passwords do not match.", "danger")
+        return render_template('change_password.html')
+
+    new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    execute_query("UPDATE users SET password_hash = %s, must_change_password = 0 WHERE id = %s", (new_hash, user_id))
+    session.pop('must_change_password', None)
+    flash("Master password updated successfully! Your account is now secured.", "success")
     return redirect(url_for('dashboard.dashboard_view'))
 
 @auth_bp.route('/logout')

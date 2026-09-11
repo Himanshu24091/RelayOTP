@@ -4,6 +4,36 @@
 
 {% block content %}
 
+<!-- Active Super Admin Notices & Warnings -->
+{% if active_notices %}
+<div class="admin-notices-container" style="margin-bottom: 1.25rem;">
+  {% for notice in active_notices %}
+  <div class="admin-notice-card notice-{{ notice.severity }}" id="notice-card-{{ notice.id }}" style="
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 0.75rem;
+    border: 1px solid {% if notice.severity == 'danger' %}rgba(239, 68, 68, 0.4){% elif notice.severity == 'warning' %}rgba(245, 158, 11, 0.4){% elif notice.severity == 'reminder' %}rgba(6, 182, 212, 0.4){% else %}rgba(99, 102, 241, 0.4){% endif %};
+    background: {% if notice.severity == 'danger' %}linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(15, 23, 42, 0.95)){% elif notice.severity == 'warning' %}linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(15, 23, 42, 0.95)){% elif notice.severity == 'reminder' %}linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(15, 23, 42, 0.95)){% else %}linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(15, 23, 42, 0.95)){% endif %};
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  ">
+    <div style="display: flex; gap: 0.85rem; align-items: flex-start;">
+      <span style="font-size: 1.4rem;">
+        {% if notice.severity == 'danger' %}🚨{% elif notice.severity == 'warning' %}⚠️{% elif notice.severity == 'reminder' %}⏰{% else %}ℹ️{% endif %}
+      </span>
+      <div>
+        <div style="font-weight: 700; font-size: 0.95rem; color: #fff;">{{ notice.title }}</div>
+        <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 0.2rem; line-height: 1.4;">{{ notice.message }}</div>
+      </div>
+    </div>
+    {% if notice.is_dismissible %}
+    <button type="button" class="btn btn-secondary btn-sm" onclick="dismissAdminNotice({{ notice.id }})" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; opacity: 0.85;" title="Dismiss notice">
+      ✕ Dismiss
+    </button>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Header Status Bar -->
 <div class="card dashboard-status-bar">
   <div class="status-bar-content">

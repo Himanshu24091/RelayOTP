@@ -31,8 +31,15 @@
         ⚡ SIGN IN SECURELY
       </button>
 
-      <div style="text-align: center; margin-top: 1.5rem; font-size: 0.88rem; color: var(--text-muted);">
+      <div style="text-align: center; margin-top: 1.25rem; font-size: 0.88rem; color: var(--text-muted);">
         Don't have an account yet? <a href="{{ url_for('auth.register') }}" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600;">Register Here</a>
+      </div>
+
+      <div style="text-align: center; margin-top: 0.85rem; font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;">
+        <span style="color: var(--text-muted);">Forgot your password or account locked?</span><br>
+        <a href="{{ url_for('help.help_view') }}" style="color: #fbbf24; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.35rem;">
+          🛎️ Get in Touch with Super Admin &rarr;
+        </a>
       </div>
 
     </form>
