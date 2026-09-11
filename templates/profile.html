@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Security Profile - RelayOTP{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+  
+  <div class="card">
+    <div class="card-header">
+      <h1 class="card-title">👤 User Security Profile</h1>
+      <span class="status-pill info">Encrypted Session</span>
+    </div>
+
+    <!-- User credentials overview -->
+    <div class="profile-meta-grid">
+      <div class="profile-meta-card">
+        <div class="profile-meta-label">Portal Username</div>
+        <div class="profile-meta-val">{{ username }}</div>
+      </div>
+
+      <div class="profile-meta-card">
+        <div class="profile-meta-label">Associated Mail</div>
+        <div class="profile-meta-val mail-text">{{ gmail_address }}</div>
+      </div>
+    </div>
+
+    <!-- 12-Hour Passcode Card -->
+    <div class="passcode-hero-card">
+      <div class="passcode-card-header">
+        <div class="passcode-title-group">
+          <span class="passcode-shield-icon">🛡️</span>
+          <h2 class="passcode-title">12-HOUR DYNAMIC ACCESS PASSCODE</h2>
+        </div>
+        <span class="status-pill success">Cryptographically Active</span>
+      </div>
+
+      <p class="passcode-subtitle">
+        This ephemeral code is required to unlock your Mailbox upon every login session on this or other workstations.
+      </p>
+
+      <!-- Passcode Display & Interaction Row -->
+      <div class="passcode-interactive-row">
+        <div class="otp-box mono passcode-display-box otp-clickable" id="profile-code-display" data-code="{{ code_info.code }}" data-masked="true" title="Click to reveal / mask code">
+          • • • • • • •
+        </div>
+        <div class="passcode-controls">
+          <button type="button" class="btn btn-secondary btn-toggle-mask" data-target="profile-code-display" title="Reveal / Mask code">
+            👁️ <span class="mask-label">Reveal</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-copy-code" data-code="{{ code_info.code }}" title="Copy code to clipboard">
+            📋 <span class="copy-label">Copy Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Validity and Expiry Metadata -->
+      <div class="passcode-meta-grid">
+        <div class="passcode-meta-item">
+          <span class="meta-label">Validity Remaining:</span>
+          <div class="meta-val remaining">
+            ⏳ {{ code_info.verbose_remaining }}
+          </div>
+        </div>
+        <div class="passcode-meta-item">
+          <span class="meta-label">Expires At:</span>
+          <div class="meta-val expiry">
+            {{ expires_str }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons Footer: Clean side-by-side on desktop, stacked on mobile -->
+      <div class="passcode-actions-footer">
+        <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-primary btn-dashboard-nav">
+          ⚡ Go to Dashboard &rarr;
+        </a>
+        <form method="POST" action="{{ url_for('profile.regenerate') }}" onsubmit="return confirm('Immediately revoke current code and generate a fresh 12-hour passcode?');">
+          <button type="submit" class="btn btn-secondary btn-regenerate">
+            🔄 Force Re-Generate New Code
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RelayOTP Gateway{% endblock %}
+
+{% block content %}
+
+<!-- Header Status Bar -->
+<div class="card dashboard-status-bar">
+  <div class="status-bar-content">
+    
+    <div class="status-metrics-group">
+      <!-- Gmail Status -->
+      <div class="status-metric-card">
+        <div class="metric-subtitle">Gmail Pipeline</div>
+        <div class="metric-value">
+          {% if has_credentials %}
+            <span class="status-pill success"><span class="pulse-dot green"></span> Connected ({{ masked_gmail }})</span>
+          {% else %}
+            <a href="{{ url_for('settings.settings_view') }}" class="status-pill warning" style="text-decoration: none;">
+              ⚠️ Vault Not Configured &rarr;
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- 12-Hour Passcode Status -->
+      <div class="status-metric-card">
+        <div class="metric-subtitle">12h Code Expiry</div>
+        <div class="metric-value">
+          <span class="status-pill info">
+            ⏳ <span id="live-countdown-timer" data-remaining-seconds="{{ code_info.remaining_seconds }}">{{ code_info.formatted_remaining }}</span>
+            <span class="mono passcode-badge">({{ code_info.code }})</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Controls: Fetch & Auto-Fetch -->
+    <div class="status-actions-group">
+      <!-- Auto-Fetch Toggle Switch -->
+      <label class="auto-fetch-switch" title="Automatically scan for new verification items every 15 seconds">
+        <input type="checkbox" id="auto-fetch-toggle">
+        <span class="slider"></span>
+        <span class="auto-fetch-label">
+          <span class="auto-fetch-dot" id="auto-fetch-dot"></span>
+          Auto-Fetch (15s)
+        </span>
+      </label>
+
+      <!-- Fetch OTP Button -->
+      {% if has_credentials %}
+        <button id="btn-fetch-otp" class="btn btn-primary btn-fetch" {% if is_locked %}disabled{% endif %}>
+          <span class="btn-icon">⚡</span> <span id="fetch-btn-label">FETCH LATEST OTP</span>
+        </button>
+      {% else %}
+        <a href="{{ url_for('settings.settings_view') }}" class="btn btn-secondary">
+          ⚙️ Setup Gmail Vault
+        </a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- Active OTPs Section -->
+<div class="card active-items-card">
+  <div class="card-header items-card-header">
+    <div class="title-with-badge">
+      <h2 class="card-title">
+        <span>🔑</span> Active Verification Items
+        <span class="badge-count" id="otp-counter">{{ otps|length }} Active</span>
+      </h2>
+      <div class="card-subtitle">
+        Ephemeral storage with automated 10-minute purge lifecycle (OTP codes & Magic Sign-In Links)
+      </div>
+    </div>
+    <div class="stealth-hint">
+      Double-tap <span class="kbd">ESC</span> for Panic Camouflage
+    </div>
+  </div>
+
+  <!-- Real-time Live Filter Search Bar -->
+  <div class="search-bar-container">
+    <div class="search-input-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="otp-search-input" class="search-input" placeholder="Filter by sender, service, or verification code..." autocomplete="off">
+      <button type="button" id="clear-search-btn" class="clear-search-btn" style="display: none;" title="Clear filter">&times;</button>
+    </div>
+  </div>
+
+  <!-- Loading Skeleton State -->
+  <div id="fetch-skeleton-loader" class="skeleton-loader" style="display: none;">
+    <div class="skeleton-row">
+      <div class="skeleton-pill"></div>
+      <div class="skeleton-box"></div>
+      <div class="skeleton-line"></div>
+    </div>
+    <div class="skeleton-row">
+      <div class="skeleton-pill"></div>
+      <div class="skeleton-box"></div>
+      <div class="skeleton-line"></div>
+    </div>
+  </div>
+
+  {% if otps and otps|length > 0 %}
+  <!-- 1. Desktop Table View (screens >= 768px) -->
+  <div class="table-responsive desktop-table-view">
+    <table class="data-table" id="desktop-otps-table">
+      <thead>
+        <tr>
+          <th>Service / Sender</th>
+          <th>Verification Code / Link</th>
+          <th>Received</th>
+          <th>Subject / Snippet</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in otps %}
+        <tr id="otp-row-{{ item.id }}" class="otp-item-row" data-search="{{ item.sender_name|lower }} {{ item.subject_snippet|lower }} {{ item.otp_code|lower }}">
+          <td>
+            <div class="sender-name">{{ item.sender_name }}</div>
+            {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+              <span class="status-pill info badge-compact">🔗 Magic Link</span>
+            {% else %}
+              <span class="status-pill success badge-compact">🔢 OTP Code</span>
+            {% endif %}
+          </td>
+          <td class="code-col">
+            {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+              <div class="link-action-box">
+                {% if item.otp_code.startswith('https://') or item.otp_code.startswith('http://') %}
+                  <button type="button" class="btn btn-sm btn-primary btn-inbox-view" 
+                          data-sender="{{ item.sender_name }}" 
+                          data-subject="{{ item.subject_snippet }}" 
+                          data-code="{{ item.otp_code }}" 
+                          data-time="{{ item.time_ago }}" 
+                          data-type="link"
+                          title="Open verification page inside secure in-app sandbox (zero browser trace)">
+                    🛡️ View In-App &rarr;
+                  </button>
+                {% else %}
+                  <span class="status-pill danger">⚠️ Invalid Link Protocol</span>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="otp-code-group">
+                <div class="otp-box mono otp-clickable" id="otp-display-{{ item.id }}" data-code="{{ item.otp_code }}" data-masked="true" title="Click to reveal / hide code">
+                  • • • • • •
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm btn-toggle-mask btn-icon-only" data-target="otp-display-{{ item.id }}" title="Reveal / Hide code">
+                  👁️
+                </button>
+              </div>
+            {% endif %}
+          </td>
+          <td class="time-col">
+            {{ item.time_ago }}
+          </td>
+          <td class="snippet-col">
+            <span class="snippet-text snippet-clickable" title="Click to view full details" data-sender="{{ item.sender_name }}" data-subject="{{ item.subject_snippet }}" data-time="{{ item.time_ago }}" data-code="{{ item.otp_code }}" data-type="{{ item.item_type }}">
+              {{ item.subject_snippet }}
+            </span>
+          </td>
+          <td class="actions-col" style="text-align: right;">
+            <div class="actions-group">
+              {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+                <button class="btn btn-secondary btn-sm btn-copy-link" data-link="{{ item.otp_code }}" title="Copy link to clipboard">
+                  📋 Copy Link
+                </button>
+              {% else %}
+                <button class="btn btn-primary btn-sm btn-copy-code" data-code="{{ item.otp_code }}" title="Copy code to clipboard">
+                  📋 Copy
+                </button>
+              {% endif %}
+              <button class="btn btn-danger btn-sm btn-purge-otp" data-otp-id="{{ item.id }}" title="Purge item immediately">
+                ✕
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. Mobile Cards View (screens < 768px) -->
+  <div class="mobile-cards-view" id="mobile-otps-cards">
+    {% for item in otps %}
+    <div class="otp-card" id="otp-card-{{ item.id }}" data-search="{{ item.sender_name|lower }} {{ item.subject_snippet|lower }} {{ item.otp_code|lower }}">
+      <div class="otp-card-header">
+        <div class="sender-info">
+          <span class="sender-name">{{ item.sender_name }}</span>
+          {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+            <span class="status-pill info badge-compact">🔗 Magic Link</span>
+          {% else %}
+            <span class="status-pill success badge-compact">🔢 OTP Code</span>
+          {% endif %}
+        </div>
+        <div class="time-badge">
+          ⏳ {{ item.time_ago }}
+        </div>
+      </div>
+
+      <div class="otp-card-body">
+        {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+          {% if item.otp_code.startswith('https://') or item.otp_code.startswith('http://') %}
+            <button type="button" class="btn btn-primary btn-mobile-open btn-inbox-view" 
+                    data-sender="{{ item.sender_name }}" 
+                    data-subject="{{ item.subject_snippet }}" 
+                    data-code="{{ item.otp_code }}" 
+                    data-time="{{ item.time_ago }}" 
+                    data-type="link">
+              🛡️ View In-App &rarr;
+            </button>
+          {% else %}
+            <span class="status-pill danger">⚠️ Invalid Link Protocol</span>
+          {% endif %}
+        {% else %}
+          <div class="otp-box-mobile">
+            <div class="otp-box mono otp-clickable" id="otp-display-m-{{ item.id }}" data-code="{{ item.otp_code }}" data-masked="true" title="Click to reveal / mask code">
+              • • • • • •
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm btn-toggle-mask btn-icon-only" data-target="otp-display-m-{{ item.id }}" title="Reveal / Hide code">
+              👁️
+            </button>
+          </div>
+        {% endif %}
+
+        <div class="otp-card-snippet snippet-clickable" data-sender="{{ item.sender_name }}" data-subject="{{ item.subject_snippet }}" data-time="{{ item.time_ago }}" data-code="{{ item.otp_code }}" data-type="{{ item.item_type }}" title="Click to view full details">
+          {{ item.subject_snippet }}
+        </div>
+      </div>
+
+      <div class="otp-card-actions">
+        {% if item.item_type == 'link' or item.otp_code.startswith('http') %}
+          <button class="btn btn-secondary btn-sm btn-copy-link flex-1" data-link="{{ item.otp_code }}">
+            📋 Copy Link
+          </button>
+        {% else %}
+          <button class="btn btn-primary btn-sm btn-copy-code flex-1" data-code="{{ item.otp_code }}">
+            📋 Copy Code
+          </button>
+        {% endif %}
+        <button class="btn btn-danger btn-sm btn-purge-otp" data-otp-id="{{ item.id }}" title="Purge item">
+          ✕ Purge
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Search No Results Notice -->
+  <div id="no-search-results" class="empty-search-state" style="display: none;">
+    <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.6;">🔍</div>
+    <h4>No matching verification items found</h4>
+    <p style="color: var(--text-muted); font-size: 0.85rem;">Try a different search query or clear the filter.</p>
+  </div>
+
+  {% else %}
+  <div class="empty-state-box">
+    <div class="empty-icon">📫</div>
+    <h3 class="empty-title">No Active Verification Items</h3>
+    <p class="empty-desc">
+      Trigger an OTP or Magic Link login on your corporate service, then click <strong>"Fetch Latest OTP"</strong>. Verification items are extracted over IMAP in read-only mode and purged in 10 minutes.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Mailbox Gatekeeper Modal (Displayed if session is locked) -->
+{% if is_locked %}
+<div class="modal-overlay" id="mailbox-lock-modal">
+  <div class="modal-content">
+    <div class="modal-icon">🔒</div>
+    <h2 class="modal-title">MAILBOX ACCESS RESTRICTED</h2>
+    <p class="modal-subtitle">
+      Enter your active 12-Hour Alphanumeric Passcode to unlock mailbox verification codes for this session.
+    </p>
+
+    <div class="form-group" style="text-align: left;">
+      <label for="lock-code-input" class="form-label" style="text-align: center;">12-Hour Passcode</label>
+      <input type="text" id="lock-code-input" class="form-input mono passcode-input" placeholder="TK-9281" maxlength="7" autofocus>
+      <div id="lock-error-msg" class="lock-error" style="display: none;"></div>
+    </div>
+
+    <button id="unlock-btn" class="btn btn-primary btn-unlock">
+      🔓 UNLOCK MAILBOX
+    </button>
+
+    <div class="modal-footer-links">
+      <div>
+        Need to check or reset your active code?
+        <a href="{{ url_for('profile.profile_view') }}" class="modal-link-cyan">
+          Open Security Profile &rarr;
+        </a>
+      </div>
+      <div>
+        Need to update your Gmail credentials?
+        <a href="{{ url_for('settings.settings_view') }}" class="modal-link-muted">
+          Go to Settings &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- In-App Privacy Verification & Sandbox Modal -->
+<div class="modal-overlay" id="inbox-verify-modal" style="display: none;">
+  <div class="modal-content inbox-verify-modal-content">
+    
+    <!-- Modal Header -->
+    <div class="inbox-verify-header">
+      <div class="verify-header-left">
+        <span class="privacy-shield-icon">🛡️</span>
+        <div>
+          <div class="verify-header-title" id="verify-modal-sender">Verification Item</div>
+          <div class="verify-header-subtitle">
+            <span class="badge-stealth">Zero Workstation History</span>
+            <span id="verify-modal-time" class="verify-time-text">Just now</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn-close-modal" id="btn-close-verify-modal" title="Close Preview (Esc)">&times;</button>
+    </div>
+
+    <!-- Live Status Banner (for trigger verification feedback) -->
+    <div id="sandbox-status-banner" class="sandbox-banner" style="display: none;"></div>
+
+    <!-- Section A: Magic Link / URL OTP Container -->
+    <div id="verify-link-container" class="verify-section" style="display: none;">
+      <!-- Sandbox Navigation / URL Bar -->
+      <div class="sandbox-url-bar">
+        <span class="sandbox-protocol-icon">🔒</span>
+        <input type="text" id="verify-modal-link-input" class="sandbox-url-input mono" readonly title="Verification Destination URL">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-modal-link" title="Copy verification URL to clipboard">
+          📋 Copy Link
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-trigger-verify" title="Execute verification token directly from server without opening tabs">
+          ⚡ Trigger Server Verify
+        </button>
+        <a id="btn-stealth-open" href="#" target="_blank" rel="noreferrer noopener" class="btn btn-secondary btn-sm" title="Complete sign-in with zero referrer tracking (noreferrer noopener)">
+          🚀 Zero-Referrer Open
+        </a>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-reload-sandbox" title="Reload sandboxed preview">
+          🔄
+        </button>
+      </div>
+
+      <!-- Sandboxed iframe Container -->
+      <div class="sandbox-frame-wrapper">
+        <div id="sandbox-loading-indicator" class="sandbox-loading">
+          <span style="font-size: 1.5rem;">⏳</span>
+          <span>Loading sandboxed verification environment...</span>
+        </div>
+        <iframe id="inbox-sandbox-iframe" class="sandbox-iframe" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" src="about:blank" title="In-App Verification Sandbox"></iframe>
+      </div>
+    </div>
+
+    <!-- Section B: Numeric OTP Code Container -->
+    <div id="verify-code-container" class="verify-section" style="display: none;">
+      <div class="verify-code-hero">
+        <div class="verify-code-label">VERIFICATION PASSCODE</div>
+        <div class="otp-box mono verify-code-box" id="verify-modal-code-display" data-code="" data-masked="false">
+          ------
+        </div>
+        <div class="verify-code-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-copy-modal-code">
+            📋 Copy Code
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-modal-code">
+            👁️ Reveal / Mask
+          </button>
+        </div>
+        <div class="verify-code-hint">🔒 Clipboard memory automatically clears 30 seconds after copying.</div>
+      </div>
+    </div>
+
+    <!-- Full Subject & Context Footer -->
+    <div class="verify-modal-footer">
+      <div class="verify-footer-label">Subject & Message Context</div>
+      <div id="verify-modal-subject" class="verify-footer-text"></div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/mailbox_lock.js') }}"></script>
+{% endblock %}

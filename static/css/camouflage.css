@@ -1,0 +1,172 @@
+/* Camouflage / Panic Mode: DevOps Terminal & Kubernetes Pod Monitor */
+
+#stealth-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+body.stealth-active #stealth-overlay {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Terminal Header */
+.term-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 0.5rem 1rem;
+  border-radius: 6px 6px 0 0;
+  border-bottom: none;
+}
+
+.term-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.term-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.term-dot.red { background: #ff5f56; }
+.term-dot.yellow { background: #ffbd2e; }
+.term-dot.green { background: #27c93f; }
+
+.term-title {
+  color: #8b949e;
+  font-size: 12px;
+}
+
+/* Terminal Workspace Grid */
+.term-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  overflow: hidden;
+}
+
+.term-sidebar {
+  border-right: 1px solid #30363d;
+  padding: 1rem;
+  overflow-y: auto;
+  background: #090d13;
+}
+
+.term-main {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+/* Metric Bars */
+.metric-row {
+  margin-bottom: 0.85rem;
+}
+
+.metric-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 4px;
+}
+
+.metric-bar-bg {
+  height: 8px;
+  background: #21262d;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.metric-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
+
+.metric-bar-fill.green { background: #3fb950; }
+.metric-bar-fill.blue { background: #58a6ff; }
+.metric-bar-fill.orange { background: #d29922; }
+
+/* Pod Table */
+.pod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin-top: 1rem;
+}
+
+.pod-table th {
+  text-align: left;
+  color: #8b949e;
+  padding: 4px 6px;
+  border-bottom: 1px solid #30363d;
+}
+
+.pod-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid #21262d;
+}
+
+.status-running {
+  color: #3fb950;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.status-running::before {
+  content: "●";
+  font-size: 8px;
+}
+
+/* Streaming Log Feed */
+.log-stream {
+  flex: 1;
+  background: #03060a;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 0.75rem;
+  overflow-y: auto;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-info { color: #58a6ff; }
+.log-ok { color: #3fb950; }
+.log-warn { color: #d29922; }
+.log-dim { color: #484f58; }
+
+.term-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-top: none;
+  padding: 0.35rem 1rem;
+  font-size: 11px;
+  color: #8b949e;
+}

@@ -1,0 +1,26 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Environment Variables & Encryption Keys (CRITICAL: Do NOT commit!)
+.env
+.dev_master.key
+
+# Local SQLite Databases
+*.db
+relay_otp.db
+relay_otp_test.db
+
+# Logs & IDE
+*.log
+.vscode/
+.idea/
+.DS_Store
+
+# Brain & Agent System Directories
+.system_generated/
+.agents/

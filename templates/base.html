@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}RelayOTP - Ephemeral Verification Gateway{% endblock %}</title>
+  <meta name="description" content="Secure, zero-trace ephemeral verification code gateway for corporate workstations and restricted office networks.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.8.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/camouflage.css') }}?v=2.8.0">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="{{ url_for('dashboard.dashboard_view') }}" class="brand-logo">
+        <span>⚡</span> RelayOTP
+        <span class="brand-badge">v{{ app_version }}</span>
+      </a>
+
+      <!-- Mobile Hamburger Toggle -->
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle Navigation Menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+
+      {% if is_logged_in %}
+      <ul class="nav-links" id="nav-links">
+        <li><a href="{{ url_for('dashboard.dashboard_view') }}" class="nav-link {% if request.endpoint == 'dashboard.dashboard_view' %}active{% endif %}">📊 Dashboard</a></li>
+        <li><a href="{{ url_for('profile.profile_view') }}" class="nav-link {% if request.endpoint == 'profile.profile_view' %}active{% endif %}">👤 Profile</a></li>
+        <li><a href="{{ url_for('settings.settings_view') }}" class="nav-link {% if request.endpoint == 'settings.settings_view' %}active{% endif %}">⚙️ Settings</a></li>
+        {% if is_admin_session %}
+        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint.startswith('admin.') %}active{% endif %}" style="color: var(--accent-cyan);">🛡️ Admin</a></li>
+        {% endif %}
+        <li>
+          <div class="nav-user-badge">
+            <span class="user-indicator"></span>
+            <span>{{ current_user }}</span>
+          </div>
+        </li>
+        <li><a href="{{ url_for('auth.logout') }}" class="nav-link nav-link-logout" style="color: var(--accent-rose);">🚪 Logout</a></li>
+      </ul>
+      {% else %}
+      <ul class="nav-links" id="nav-links">
+        <li><a href="{{ url_for('auth.login') }}" class="nav-link">Log In</a></li>
+        <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Create Account</a></li>
+      </ul>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- Flash Messages -->
+    <div class="alert-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert {{ category }}">
+              <span>{{ message }}</span>
+              <button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer; font-size:1.1rem;">&times;</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {% if not_found %}
+    <div class="card" style="text-align: center; padding: 4rem 2rem;">
+      <h2>404 - Gateway Route Not Found</h2>
+      <p style="color: var(--text-muted); margin: 1rem 0;">The requested endpoint does not exist or has expired.</p>
+      <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-primary">Return to Safe Dashboard</a>
+    </div>
+    {% elif server_error %}
+    <div class="card" style="text-align: center; padding: 4rem 2rem;">
+      <h2>500 - Internal Security Gateway Error</h2>
+      <p style="color: var(--text-muted); margin: 1rem 0;">The gateway encountered an unexpected internal error.</p>
+      <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-primary">Return to Safe Dashboard</a>
+    </div>
+    {% else %}
+      {% block content %}{% endblock %}
+    {% endif %}
+
+  </main>
+
+  <!-- Toast Notification Holder -->
+  <div id="toast-container"></div>
+
+  <!-- Camouflage / Panic Mode Screen (Double-ESC Hotkey) -->
+  <div id="stealth-overlay">
+    <div class="term-header">
+      <div class="term-controls">
+        <span class="term-dot red"></span>
+        <span class="term-dot yellow"></span>
+        <span class="term-dot green"></span>
+      </div>
+      <div class="term-title">devops-console :: us-east-prod-k8s :: telemetry-agent [v4.18.2]</div>
+      <div style="font-size: 11px; color: #8b949e;">CONNECTED (SSL: 443)</div>
+    </div>
+    <div class="term-grid">
+      <div class="term-sidebar">
+        <div style="font-weight: bold; color: #58a6ff; margin-bottom: 0.75rem;">CLUSTER TELEMETRY</div>
+        
+        <div class="metric-row">
+          <div class="metric-label"><span>CPU UTILIZATION</span><span>42.8%</span></div>
+          <div class="metric-bar-bg"><div class="metric-bar-fill green" style="width: 42.8%;"></div></div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-label"><span>CLUSTER RAM</span><span>6.8 GB / 16 GB</span></div>
+          <div class="metric-bar-bg"><div class="metric-bar-fill blue" style="width: 42.5%;"></div></div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-label"><span>IOPS WRITE</span><span>1,420 IO/s</span></div>
+          <div class="metric-bar-bg"><div class="metric-bar-fill orange" style="width: 65%;"></div></div>
+        </div>
+
+        <div style="font-weight: bold; color: #58a6ff; margin-top: 1.5rem; margin-bottom: 0.5rem;">POD INVENTORY</div>
+        <table class="pod-table">
+          <thead>
+            <tr><th>POD NAME</th><th>STATUS</th><th>RESTARTS</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>auth-worker-7c9d</td><td class="status-running">Running</td><td>0</td></tr>
+            <tr><td>ingress-controller-4a</td><td class="status-running">Running</td><td>0</td></tr>
+            <tr><td>kafka-broker-node-0</td><td class="status-running">Running</td><td>1</td></tr>
+            <tr><td>postgres-replica-9b</td><td class="status-running">Running</td><td>0</td></tr>
+            <tr><td>redis-cache-tier-1</td><td class="status-running">Running</td><td>0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="term-main">
+        <div style="color: #8b949e; font-size: 11px; margin-bottom: 0.5rem;">STREAM LOGS (STDOUT/STDERR) — FILTER: ALL SERVICES</div>
+        <div class="log-stream" id="term-log-stream">
+          <div class="log-line"><span class="log-dim">[12:04:11]</span> <span class="log-info">[init]</span> Initializing eBPF kernel network probe...</div>
+          <div class="log-line"><span class="log-dim">[12:04:12]</span> <span class="log-ok">[system]</span> Prometheus daemon socket mounted on /var/run/prom.sock</div>
+          <div class="log-line"><span class="log-dim">[12:04:14]</span> <span class="log-info">[ingress]</span> TLS session resumption cache initialized (size: 40960 entries)</div>
+          <div class="log-line"><span class="log-dim">[12:04:18]</span> <span class="log-ok">[worker]</span> Queue consumer thread pool warm [concurrency: 16]</div>
+        </div>
+      </div>
+    </div>
+    <div class="term-footer">
+      <span>HOST: node-compute-prod-04.internal</span>
+      <span>DOUBLE-TAP <span class="kbd">ESC</span> TO RETURN</span>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=2.8.0"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=2.8.0"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

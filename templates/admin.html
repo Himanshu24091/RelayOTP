@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Control Center - RelayOTP{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 1.5rem auto;">
+
+  <!-- Admin Title Banner -->
+  <div class="card" style="border-color: rgba(6, 182, 212, 0.3); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08));">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 class="card-title" style="font-size: 1.5rem; color: #fff;">
+          🛡️ Administrative Control Center
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem;">
+          Multi-tenant user governance, 12-hour passcode lifecycle controls, and system telemetry
+        </p>
+      </div>
+      <div>
+        <span class="status-pill success" style="font-size: 0.85rem;">
+          ● Gateway Online
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Telemetry Metrics Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    
+    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
+      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Total Users</div>
+      <div style="font-size: 2rem; font-weight: 700; color: #fff; margin-top: 0.25rem;">{{ telemetry.total_users }}</div>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
+      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Linked Gmails</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.25rem;">{{ telemetry.linked_users }}</div>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
+      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Active Ephemeral OTPs</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--accent-purple); margin-top: 0.25rem;">{{ telemetry.active_otps }}</div>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; padding: 1.25rem;">
+      <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Database Driver</div>
+      <div style="font-size: 1.05rem; font-weight: 600; color: var(--accent-emerald); margin-top: 0.5rem;">{{ telemetry.database_type }}</div>
+    </div>
+
+  </div>
+
+  <!-- Global Action Controls -->
+  <div class="card" style="padding: 1.25rem 1.75rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="font-weight: 600; font-size: 1rem;">Global Gateway Maintenance</div>
+        <div style="font-size: 0.82rem; color: var(--text-muted);">
+          Execute instant garbage collection or emergency flushing across all tenants
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <form method="POST" action="{{ url_for('admin.admin_purge_otps') }}">
+          <button type="submit" class="btn btn-secondary btn-sm">
+            🧹 Purge Expired OTPs
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.admin_flush_all_otps') }}" onsubmit="return confirm('Emergency Flush: purge all OTPs for every tenant right now?');">
+          <button type="submit" class="btn btn-danger btn-sm">
+            ⚡ Flush All Active OTPs
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-Tenant User Management -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">👥 Registered Portal Tenants</h2>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Manage user credentials, promote administrators, and inspect or revoke 12-hour passcodes
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Gmail Vault</th>
+            <th>12-Hour Passcode</th>
+            <th>Passcode Status</th>
+            <th style="text-align: right;">Administrative Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td style="color: var(--text-subtle); font-size: 0.85rem;">#{{ u.id }}</td>
+            <td style="font-weight: 600; color: #fff;">
+              {{ u.username }}
+            </td>
+            <td>
+              {% if u.is_admin %}
+                <span class="status-pill info" style="font-size: 0.72rem;">🛡️ Admin</span>
+              {% else %}
+                <span class="status-pill" style="font-size: 0.72rem; background: rgba(255,255,255,0.06); color: var(--text-muted);">User</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if u.has_password and u.gmail_address %}
+                <span class="status-pill success" style="font-size: 0.72rem;">🟢 Linked</span>
+              {% else %}
+                <span class="status-pill warning" style="font-size: 0.72rem;">⚠️ None</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="mono" style="font-weight: 700; color: var(--accent-cyan);">
+                {{ u.mailbox_access_code or 'None' }}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill {{ u.code_badge }}" style="font-size: 0.75rem;">
+                {{ u.code_status }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end;">
+                
+                <!-- Reset 12h code -->
+                <form method="POST" action="{{ url_for('admin.admin_reset_code', target_user_id=u.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-secondary btn-sm" title="Force generate a new 12h passcode for this user">
+                    🔄 Reset Code
+                  </button>
+                </form>
+
+                <!-- Toggle Admin -->
+                <form method="POST" action="{{ url_for('admin.admin_toggle_role', target_user_id=u.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-secondary btn-sm" title="Toggle Admin / Regular User role">
+                    🛡️
+                  </button>
+                </form>
+
+                <!-- Delete User -->
+                <form method="POST" action="{{ url_for('admin.admin_delete_user', target_user_id=u.id) }}" style="display:inline;"
+                      onsubmit="return confirm('Permanently delete tenant {{ u.username }} and all associated data?');">
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete User">
+                    🗑️
+                  </button>
+                </form>
+
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

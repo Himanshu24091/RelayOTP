@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Gmail Vault - RelayOTP{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px; margin: 1.5rem auto;">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h1 class="card-title">⚙️ Gmail Credential Vault</h1>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+          Configure where RelayOTP extracts verification codes from with AES-256 zero-knowledge encryption.
+        </div>
+      </div>
+      <div>
+        {% if has_credentials %}
+          <span class="status-pill success">🟢 CONNECTED ({{ masked_gmail }})</span>
+        {% else %}
+          <span class="status-pill warning">⚠️ NOT CONFIGURED</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not has_credentials %}
+    <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(139, 92, 246, 0.12)); border: 1px solid rgba(6, 182, 212, 0.35); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+        <span style="font-size: 1.8rem; line-height: 1;">🚀</span>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05rem; color: #fff;">Step 1: Connect Your Gmail Account</div>
+          <div style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.5;">
+            Link your Gmail address and 16-character Google App Password below to activate verification code fetching. Once connected, you can proceed directly to the Dashboard or check your 12-Hour passcode in Profile.
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <form id="vault-form">
+      
+      <div class="form-group">
+        <label for="gmail_address" class="form-label">Personal Gmail Address</label>
+        <input type="email" id="gmail_address" name="gmail_address" class="form-input" 
+               placeholder="e.g. aman.work@gmail.com" required value="{{ gmail_address }}">
+        <div class="form-hint">Used strictly for direct SSL IMAP connection in read-only mode.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="app_password" class="form-label">Google 16-Character App Password</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="password" id="app_password" name="app_password" class="form-input mono" 
+                 value="{{ app_password }}"
+                 placeholder="16-character App Password (e.g. abcd efgh ijkl mnop)" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-app-password" 
+                  onclick="toggleAppPasswordVisibility(event, this)" title="Reveal / Hide password" 
+                  style="min-width: 42px; height: 42px; font-size: 1.15rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+            👁️
+          </button>
+        </div>
+        <div class="form-hint">Never enter your standard Google account login password here!</div>
+      </div>
+
+      <div class="security-notice">
+        <strong>ℹ️ How to generate a 16-character Google App Password:</strong>
+        <ol style="margin-left: 1.25rem; margin-top: 0.5rem; line-height: 1.6;">
+          <li>Open your Google Account (<a href="https://myaccount.google.com" target="_blank" style="color:var(--accent-cyan);">myaccount.google.com</a>) &rarr; <strong>Security</strong> tab.</li>
+          <li>Ensure <strong>"2-Step Verification"</strong> is turned ON.</li>
+          <li>Search for <strong>"App Passwords"</strong> &rarr; Create a new app name e.g., <code>RelayOTP</code>.</li>
+          <li>Copy the generated 16-character password and paste it into the field above.</li>
+        </ol>
+      </div>
+
+      <div style="margin: 1.5rem 0; border-top: 1px solid var(--border-glass); padding-top: 1.25rem;">
+        <div style="font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">WORKPLACE PRIVACY PREFERENCES</div>
+        
+        <label style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.6rem; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);">
+          <input type="checkbox" checked disabled>
+          Mask verification codes by default on Dashboard (••••••)
+        </label>
+        
+        <label style="display: flex; align-items: center; gap: 0.65rem; cursor: pointer; font-size: 0.9rem; color: var(--text-muted);">
+          <input type="checkbox" checked disabled>
+          Auto-clear clipboard memory 30 seconds after copying code
+        </label>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+        <button type="button" id="btn-test-vault" class="btn btn-secondary">
+          🧪 TEST CONNECTION
+        </button>
+        <button type="submit" id="btn-save-vault" class="btn btn-primary">
+          💾 ENCRYPT & SAVE VAULT
+        </button>
+      </div>
+
+    </form>
+
+    <!-- Danger Zone -->
+    {% if has_credentials %}
+    <div style="margin-top: 3rem; border-top: 1px dashed rgba(244, 63, 94, 0.4); padding-top: 1.5rem;">
+      <h3 style="color: var(--accent-rose); font-size: 1.1rem; margin-bottom: 0.5rem;">⚠️ DANGER ZONE</h3>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
+        Want to revoke access completely? Erasing your credentials removes encrypted blobs from database and purges all active OTP records.
+      </p>
+      <button type="button" id="btn-disconnect-vault" class="btn btn-danger">
+        🗑️ Disconnect & Erase Gmail Credentials from Database
+      </button>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+
+<!-- Connection Success Choice Dialog -->
+<div class="modal-overlay" id="connected-success-modal" style="display: none;">
+  <div class="modal-content" style="max-width: 500px; padding: 2.25rem;">
+    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎉</div>
+    <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff;">
+      Gmail Connected Successfully!
+    </h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.75rem; line-height: 1.5;">
+      Your Google App Password has been verified and encrypted with AES-256. Where would you like to proceed?
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+      <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-primary" style="padding: 0.85rem; font-size: 1rem;">
+        ⚡ Go to Dashboard (Unlock & Fetch Codes)
+      </a>
+      <a href="{{ url_for('profile.profile_view') }}" class="btn btn-secondary" style="padding: 0.85rem; font-size: 0.95rem;">
+        👤 View 12-Hour Passcode in Profile
+      </a>
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('connected-success-modal').style.display='none'; window.location.reload();" 
+              style="background: transparent; color: var(--text-subtle); margin-top: 0.25rem; cursor: pointer; border: none;">
+        Stay on Settings
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
