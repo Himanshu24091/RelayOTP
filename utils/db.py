@@ -295,56 +295,80 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_help_status ON help_requests(status, created_at);
         """
 
+    tables_to_init = [
+        ("users", users_table_sql),
+        ("otps", otps_table_sql),
+        ("admin_notices", admin_notices_sql),
+        ("user_notice_reads", user_notice_reads_sql),
+        ("help_requests", help_requests_sql),
+        ("system_settings", """
+        CREATE TABLE IF NOT EXISTS system_settings (
+            setting_key VARCHAR(60) PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+    ]
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        try:
-            cursor.execute(users_table_sql)
-            cursor.execute(otps_table_sql)
-            cursor.execute(admin_notices_sql)
-            cursor.execute(user_notice_reads_sql)
-            cursor.execute(help_requests_sql)
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS system_settings (
-                setting_key VARCHAR(60) PRIMARY KEY,
-                setting_value TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            """)
-            if IS_POSTGRES:
-                cursor.execute(index_sql)
-            else:
-                for statement in index_sql.strip().split(';'):
-                    if statement.strip():
-                        cursor.execute(statement.strip())
-            conn.commit()
-
-            # Migration check for existing SQLite / Postgres tables
+        for tbl_name, tbl_sql in tables_to_init:
             try:
-                cursor.execute("ALTER TABLE otps ADD COLUMN item_type VARCHAR(20) DEFAULT 'code'")
+                cursor.execute(tbl_sql)
                 conn.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                conn.rollback()
+                print(f"[RelayOTP] Schema creation note for {tbl_name}: {e}")
 
-            user_cols_to_add = [
-                ("is_suspended", "BOOLEAN DEFAULT FALSE" if IS_POSTGRES else "BOOLEAN DEFAULT 0"),
-                ("suspended_until", "TIMESTAMP WITH TIME ZONE DEFAULT NULL" if IS_POSTGRES else "TIMESTAMP DEFAULT NULL"),
-                ("suspension_reason", "TEXT DEFAULT NULL"),
-                ("must_change_password", "BOOLEAN DEFAULT FALSE" if IS_POSTGRES else "BOOLEAN DEFAULT 0")
-            ]
-            for col_name, col_def in user_cols_to_add:
+        # Indexes
+        for idx_stmt in index_sql.strip().split(';'):
+            clean_stmt = idx_stmt.strip()
+            if clean_stmt:
                 try:
-                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
+                    cursor.execute(clean_stmt)
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+
+        # Schema migrations for existing databases (Postgres & SQLite)
+        if IS_POSTGRES:
+            pg_migrations = [
+                "ALTER TABLE otps ADD COLUMN IF NOT EXISTS item_type VARCHAR(20) DEFAULT 'code'",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP WITH TIME ZONE DEFAULT NULL",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_reason TEXT DEFAULT NULL",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS mailbox_access_code VARCHAR(10) DEFAULT NULL",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS access_code_expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL"
+            ]
+            for stmt in pg_migrations:
+                try:
+                    cursor.execute(stmt)
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+                    print(f"[RelayOTP] Migration note on '{stmt}': {e}")
+        else:
+            sqlite_migrations = [
+                ("otps", "item_type", "VARCHAR(20) DEFAULT 'code'"),
+                ("users", "is_suspended", "BOOLEAN DEFAULT 0"),
+                ("users", "suspended_until", "TIMESTAMP DEFAULT NULL"),
+                ("users", "suspension_reason", "TEXT DEFAULT NULL"),
+                ("users", "must_change_password", "BOOLEAN DEFAULT 0"),
+                ("users", "is_admin", "BOOLEAN DEFAULT 0"),
+                ("users", "mailbox_access_code", "VARCHAR(10) DEFAULT NULL"),
+                ("users", "access_code_expires_at", "TIMESTAMP DEFAULT NULL")
+            ]
+            for tbl, col, col_def in sqlite_migrations:
+                try:
+                    cursor.execute(f"ALTER TABLE {tbl} ADD COLUMN {col} {col_def}")
                     conn.commit()
                 except Exception:
-                    pass
+                    conn.rollback()
 
-            print("[RelayOTP] Database schema and migrations initialized successfully.")
-        except Exception as e:
-            conn.rollback()
-            print(f"[RelayOTP] Error initializing database: {e}")
-            raise
-        finally:
-            cursor.close()
+        cursor.close()
+        print("[RelayOTP] Database schema and migrations initialized successfully.")
 
     # Ensure dedicated Super Admin account exists
     ensure_default_admin()

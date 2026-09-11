@@ -168,6 +168,9 @@ def create_app():
 
     @app.errorhandler(500)
     def server_error(e):
+        import traceback
+        traceback.print_exc()
+        app.logger.error(f"500 Internal Error: {e}", exc_info=True)
         return render_template('base.html', server_error=True), 500
 
     return app

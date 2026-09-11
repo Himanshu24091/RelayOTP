@@ -99,35 +99,77 @@ def admin_view():
     if not is_current_user_admin():
         return redirect(url_for('admin.admin_login'))
 
-    # Collect telemetry
-    total_users_row = fetch_one("SELECT COUNT(*) as count FROM users")
-    total_users = total_users_row['count'] if total_users_row else 0
+    # Collect telemetry safely
+    total_users = 0
+    linked_users = 0
+    active_otps = 0
+    pending_tickets = 0
+    active_notices_count = 0
 
-    linked_users_row = fetch_one("SELECT COUNT(*) as count FROM users WHERE gmail_address IS NOT NULL AND encrypted_app_password IS NOT NULL")
-    linked_users = linked_users_row['count'] if linked_users_row else 0
+    try:
+        total_users_row = fetch_one("SELECT COUNT(*) as count FROM users")
+        total_users = total_users_row['count'] if total_users_row else 0
+    except Exception as e:
+        print(f"[Admin] total_users query note: {e}")
 
-    active_otps_row = fetch_one(
-        "SELECT COUNT(*) as count FROM otps WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '10 MINUTE'"
-    )
-    active_otps = active_otps_row['count'] if active_otps_row else 0
+    try:
+        linked_users_row = fetch_one("SELECT COUNT(*) as count FROM users WHERE gmail_address IS NOT NULL AND encrypted_app_password IS NOT NULL")
+        linked_users = linked_users_row['count'] if linked_users_row else 0
+    except Exception as e:
+        print(f"[Admin] linked_users query note: {e}")
 
-    pending_tickets_row = fetch_one("SELECT COUNT(*) as count FROM help_requests WHERE status = 'pending'")
-    pending_tickets = pending_tickets_row['count'] if pending_tickets_row else 0
+    try:
+        active_otps_row = fetch_one(
+            "SELECT COUNT(*) as count FROM otps WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '10 MINUTE'"
+        )
+        active_otps = active_otps_row['count'] if active_otps_row else 0
+    except Exception as e:
+        print(f"[Admin] active_otps query note: {e}")
 
-    active_notices_row = fetch_one(
-        "SELECT COUNT(*) as count FROM admin_notices WHERE expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP"
-    )
-    active_notices_count = active_notices_row['count'] if active_notices_row else 0
+    try:
+        pending_tickets_row = fetch_one("SELECT COUNT(*) as count FROM help_requests WHERE status = 'pending'")
+        pending_tickets = pending_tickets_row['count'] if pending_tickets_row else 0
+    except Exception as e:
+        print(f"[Admin] pending_tickets query note: {e}")
+
+    try:
+        active_notices_row = fetch_one(
+            "SELECT COUNT(*) as count FROM admin_notices WHERE expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP"
+        )
+        active_notices_count = active_notices_row['count'] if active_notices_row else 0
+    except Exception as e:
+        print(f"[Admin] active_notices query note: {e}")
 
     # Fetch all tenants with security governance flags
-    users = fetch_all("""
-        SELECT id, username, gmail_address, is_admin, mailbox_access_code, 
-               access_code_expires_at, is_suspended, suspended_until, suspension_reason,
-               must_change_password, created_at,
-               (CASE WHEN encrypted_app_password IS NOT NULL THEN 1 ELSE 0 END) as has_password
-        FROM users 
-        ORDER BY id ASC
-    """)
+    users = []
+    try:
+        users = fetch_all("""
+            SELECT id, username, gmail_address, is_admin, mailbox_access_code, 
+                   access_code_expires_at, is_suspended, suspended_until, suspension_reason,
+                   must_change_password, created_at,
+                   (CASE WHEN encrypted_app_password IS NOT NULL THEN 1 ELSE 0 END) as has_password
+            FROM users 
+            ORDER BY id ASC
+        """) or []
+    except Exception as e:
+        print(f"[Admin] Users governance query note: {e}. Executing schema auto-repair...")
+        try:
+            from utils.db import init_db
+            init_db()
+            users = fetch_all("""
+                SELECT id, username, gmail_address, is_admin, mailbox_access_code, 
+                       access_code_expires_at, is_suspended, suspended_until, suspension_reason,
+                       must_change_password, created_at,
+                       (CASE WHEN encrypted_app_password IS NOT NULL THEN 1 ELSE 0 END) as has_password
+                FROM users 
+                ORDER BY id ASC
+            """) or []
+        except Exception as e2:
+            print(f"[Admin] Fallback users query: {e2}")
+            try:
+                users = fetch_all("SELECT id, username, gmail_address, is_admin, created_at FROM users ORDER BY id ASC") or []
+            except Exception:
+                users = []
 
     now = datetime.now(timezone.utc)
     for u in users:
@@ -179,23 +221,33 @@ def admin_view():
             u['suspension_label'] = "Active"
 
     # Fetch active notices & warnings
-    notices = fetch_all("""
-        SELECT n.id, n.target_user_id, n.title, n.message, n.severity, 
-               n.is_dismissible, n.expires_at, n.created_at,
-               u.username as target_username
-        FROM admin_notices n
-        LEFT JOIN users u ON n.target_user_id = u.id
-        ORDER BY n.created_at DESC
-    """)
+    notices = []
+    try:
+        notices = fetch_all("""
+            SELECT n.id, n.target_user_id, n.title, n.message, n.severity, 
+                   n.is_dismissible, n.expires_at, n.created_at,
+                   u.username as target_username
+            FROM admin_notices n
+            LEFT JOIN users u ON n.target_user_id = u.id
+            ORDER BY n.created_at DESC
+        """) or []
+    except Exception as e:
+        print(f"[Admin] notices query note: {e}")
+        notices = []
 
     # Fetch help & password reset tickets
-    help_tickets = fetch_all("""
-        SELECT id, ticket_ref, username, contact_info, request_type,
-               user_message, status, admin_notes, temp_password, created_at, resolved_at
-        FROM help_requests
-        ORDER BY (CASE WHEN status = 'pending' THEN 0 ELSE 1 END), created_at DESC
-        LIMIT 50
-    """)
+    help_tickets = []
+    try:
+        help_tickets = fetch_all("""
+            SELECT id, ticket_ref, username, contact_info, request_type,
+                   user_message, status, admin_notes, temp_password, created_at, resolved_at
+            FROM help_requests
+            ORDER BY (CASE WHEN status = 'pending' THEN 0 ELSE 1 END), created_at DESC
+            LIMIT 50
+        """) or []
+    except Exception as e:
+        print(f"[Admin] help_tickets query note: {e}")
+        help_tickets = []
 
     telemetry = {
         'total_users': total_users,
@@ -209,10 +261,19 @@ def admin_view():
         'timeout': f"{Config.IMAP_TIMEOUT_SECONDS}s"
     }
 
-    current_master_pin = get_system_setting('admin_master_key', Config.ADMIN_MASTER_KEY)
-    admin_flag = True if IS_POSTGRES else 1
-    admin_account = fetch_one("SELECT username FROM users WHERE is_admin = %s ORDER BY id ASC", (admin_flag,))
-    current_admin_user = admin_account['username'] if admin_account else Config.ADMIN_DEFAULT_USER
+    try:
+        current_master_pin = get_system_setting('admin_master_key', Config.ADMIN_MASTER_KEY)
+    except Exception:
+        current_master_pin = Config.ADMIN_MASTER_KEY
+
+    current_admin_user = Config.ADMIN_DEFAULT_USER
+    try:
+        admin_flag = True if IS_POSTGRES else 1
+        admin_account = fetch_one("SELECT username FROM users WHERE is_admin = %s ORDER BY id ASC", (admin_flag,))
+        if admin_account and admin_account.get('username'):
+            current_admin_user = admin_account['username']
+    except Exception as e:
+        print(f"[Admin] admin_account query note: {e}")
 
     return render_template(
         'admin.html',
