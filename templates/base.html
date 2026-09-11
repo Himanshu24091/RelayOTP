@@ -34,14 +34,13 @@
 
       {% if is_admin_session %}
       <ul class="nav-links" id="nav-links">
-        <li><a href="{{ url_for('admin.admin_view') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}" style="color: #fda4af; font-weight: 700; background: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.4); border-radius: 6px; padding: 0.3rem 0.65rem;">👑 Super Admin</a></li>
         {% if current_user_id %}
         <li><a href="{{ url_for('dashboard.dashboard_view') }}" class="nav-link">📊 User Dashboard</a></li>
         {% endif %}
         <li>
           <div class="nav-user-badge" style="background: rgba(225, 29, 72, 0.15); border-color: rgba(225, 29, 72, 0.35);">
             <span class="user-indicator" style="background: #f43f5e; box-shadow: 0 0 8px #f43f5e;"></span>
-            <span style="color: #fda4af; font-weight: 600;">👑 {{ current_user or 'SuperAdmin' }}</span>
+            <span style="color: #fda4af; font-weight: 600;">👑 {{ current_user or 'admin' }}</span>
           </div>
         </li>
         <li><a href="{{ url_for('admin.admin_logout') }}" class="nav-link nav-link-logout" style="color: var(--accent-rose); font-weight: 700;">🚪 Logout</a></li>

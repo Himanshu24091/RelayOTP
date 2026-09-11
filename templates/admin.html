@@ -27,14 +27,15 @@
         </div>
       </div>
       <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.85rem; border-radius: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.82rem; color: #6ee7b7; font-weight: 600;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
+          Root Console Active
+        </div>
         {% if current_user_id %}
         <a href="{{ url_for('dashboard.dashboard_view') }}" class="btn btn-secondary btn-sm">
           📊 User Dashboard
         </a>
         {% endif %}
-        <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-sm" style="background: rgba(225, 29, 72, 0.2); color: #fda4af; border: 1px solid rgba(225, 29, 72, 0.4); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600;">
-          🚪 Logout Admin
-        </a>
       </div>
     </div>
   </div>
