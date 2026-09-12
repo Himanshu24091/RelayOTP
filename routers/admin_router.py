@@ -10,15 +10,6 @@ from config import Config
 admin_bp = Blueprint('admin', __name__)
 
 def is_current_user_admin() -> bool:
-    pending_close = session.get('_pending_tab_close')
-    if pending_close:
-        import time
-        if time.time() - pending_close < 3.0:
-            session.pop('_pending_tab_close', None)
-        else:
-            session.clear()
-            return False
-
     # 1. Check if admin session was unlocked via Master Key or Admin Gate
     if session.get('admin_authenticated') is True:
         return True

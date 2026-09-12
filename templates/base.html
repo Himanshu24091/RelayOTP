@@ -174,8 +174,8 @@
       currentUser: {{ session.get('username') | tojson if session.get('username') else 'null' }}
     };
   </script>
-  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=3.0.0"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}?v=3.0.0"></script>
+  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=3.1.0"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=3.1.0"></script>
   <script>
     // Ensure browsers re-check session with server when navigated back via history
     window.addEventListener('pageshow', function(e) {
