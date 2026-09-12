@@ -2,6 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>
+    (function() {
+      var isLoggedIn = {{ 'true' if session.get('user_id') or session.get('admin_authenticated') else 'false' }};
+      if (isLoggedIn) {
+        var hasActiveTab = false;
+        try {
+          hasActiveTab = sessionStorage.getItem('relay_active_tab') === '1';
+        } catch (e) {}
+        var ref = document.referrer || '';
+        var isFromAuth = ref.indexOf('/login') !== -1 || ref.indexOf('/register') !== -1 || ref.indexOf('/admin/login') !== -1 || ref.indexOf('/change-password') !== -1;
+        if (!hasActiveTab && !isFromAuth) {
+          if (document.documentElement) {
+            document.documentElement.style.display = 'none';
+          }
+          var isAdmin = {{ 'true' if session.get('admin_authenticated') else 'false' }};
+          window.location.replace(isAdmin ? '/admin/logout?reason=tab_closed' : '/logout?reason=tab_closed');
+        } else {
+          try { sessionStorage.setItem('relay_active_tab', '1'); } catch (e) {}
+        }
+      } else {
+        try { sessionStorage.setItem('relay_active_tab', '1'); } catch (e) {}
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}RelayOTP - Ephemeral Verification Gateway{% endblock %}</title>
   <meta name="description" content="Secure, zero-trace ephemeral verification code gateway for corporate workstations and restricted office networks.">
@@ -174,8 +198,8 @@
       currentUser: {{ session.get('username') | tojson if session.get('username') else 'null' }}
     };
   </script>
-  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=3.1.0"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}?v=3.1.0"></script>
+  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=3.2.0"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=3.2.0"></script>
   <script>
     // Ensure browsers re-check session with server when navigated back via history
     window.addEventListener('pageshow', function(e) {
