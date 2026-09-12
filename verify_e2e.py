@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+import random
 
 BASE_URL = "http://127.0.0.1:5000"
 
@@ -8,10 +9,11 @@ def run_e2e_verification():
     from utils.db import execute_query
     execute_query("DELETE FROM users WHERE username = 'aman_dev'")
     
+    test_user = f"test_{random.randint(10000, 99999)}"
     session = requests.Session()
-    print("--- 1. Registering New User (aman_dev) ---")
+    print(f"--- 1. Registering New User ({test_user}) ---")
     reg_resp = session.post(f"{BASE_URL}/register", data={
-        'username': 'aman_dev',
+        'username': test_user,
         'password': 'Password123!',
         'confirm_password': 'Password123!',
         'admin_key': 'admin123'
@@ -55,9 +57,9 @@ def run_e2e_verification():
 
     print("\n--- 7. Checking Unlocked Dashboard ---")
     dash_unlocked_resp = session.get(f"{BASE_URL}/dashboard")
-    assert "Active Verification Codes" in dash_unlocked_resp.text
+    assert "Active Verification Items" in dash_unlocked_resp.text
     assert "MAILBOX ACCESS RESTRICTED" not in dash_unlocked_resp.text
-    print("Dashboard successfully unlocked and active verification codes ready!")
+    print("Dashboard successfully unlocked and active verification items ready!")
 
     print("\n--- 7b. Calling /api/fetch-otp (Authorized Session) ---")
     fetch_resp = session.post(f"{BASE_URL}/api/fetch-otp")
@@ -69,8 +71,8 @@ def run_e2e_verification():
     print("\n--- 8. Checking Admin Control Center (/admin) ---")
     admin_resp = session.get(f"{BASE_URL}/admin")
     assert "Administrative Control Center" in admin_resp.text
-    assert "Registered Portal Tenants" in admin_resp.text
-    assert "aman_dev" in admin_resp.text
+    assert "Registered Tenant Accounts" in admin_resp.text
+    assert test_user in admin_resp.text
     print("Admin Control Page successfully loaded and verified!")
 
     print("\n--- 9. Testing Admin 12-Hour Code Reset ---")

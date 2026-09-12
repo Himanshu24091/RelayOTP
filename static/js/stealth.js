@@ -112,12 +112,122 @@ function startSimulatedLogs() {
   }, 1200);
 }
 
-// Tab-Scoped Session Management:
-// Flask non-permanent cookies (SESSION_PERMANENT=False) natively expire when the browser tab/window closes.
-// We clear sessionStorage on explicit tab close to maintain zero-trace client state without disrupting active navigation.
-window.addEventListener('pagehide', (e) => {
-  if (e.persisted) return;
+// Tab-Scoped Session Management & Instant Tab-Close Terminator:
+// 1. In modern browsers, session cookies can persist across tab closes or restarts ("Continue where you left off").
+// 2. We employ a dual-layer strategy:
+//    - Layer 1 (navigator.sendBeacon): On pagehide/tab-close without internal navigation,
+//      synchronously dispatch a beacon to /api/auth/tab-logout (or /admin/logout) to clear server session instantly.
+//    - Layer 2 (sessionStorage Tab Guard): sessionStorage is isolated per tab and purged on tab close.
+//      If an authenticated page loads without active tab state (restored/orphaned tab), immediately flush & logout.
+(function initTabScopedSession() {
+  const config = window.RELAY_CONFIG || {};
+
+  // If user is unauthenticated, clean any lingering markers and listen for auth form submits
+  if (!config.isLoggedIn) {
+    try {
+      sessionStorage.removeItem('relay_tab_active');
+      sessionStorage.removeItem('relay_is_navigating');
+    } catch (e) {}
+
+    // When submitting login / register, flag internal navigation so next landing knows it's legitimate
+    document.addEventListener('submit', () => {
+      try {
+        sessionStorage.setItem('relay_is_navigating', '1');
+      } catch (e) {}
+    }, true);
+    return;
+  }
+
+  // Layer 2: Client Tab-Lifecycle Validation
+  const hasActiveTab = sessionStorage.getItem('relay_tab_active') === '1';
+  const wasNavigating = sessionStorage.getItem('relay_is_navigating') === '1';
+  const ref = document.referrer || '';
+  const isFromAuth = ref.includes('/login') || ref.includes('/register') || ref.includes('/admin/login') || ref.includes('/change-password');
+
+  // If authenticated on server, but tab was opened afresh / restored without tab state or navigation flag
+  if (!hasActiveTab && !wasNavigating && !isFromAuth) {
+    const logoutUrl = config.isAdmin ? '/admin/logout?reason=tab_closed' : '/logout?reason=tab_closed';
+    window.location.replace(logoutUrl);
+    return;
+  }
+
+  // Tab is verified active
   try {
-    sessionStorage.removeItem('relay_temp');
-  } catch (err) {}
-});
+    sessionStorage.setItem('relay_tab_active', '1');
+    sessionStorage.removeItem('relay_is_navigating');
+  } catch (e) {}
+
+  let isInternalNav = false;
+
+  function markInternalNav() {
+    isInternalNav = true;
+    try {
+      sessionStorage.setItem('relay_is_navigating', '1');
+    } catch (e) {}
+  }
+
+  // Intercept internal link clicks
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (!link) return;
+
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+    if (link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+    try {
+      const destUrl = new URL(link.href, window.location.origin);
+      if (destUrl.origin === window.location.origin) {
+        markInternalNav();
+      }
+    } catch (err) {}
+  }, true);
+
+  // Intercept form submissions
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    const action = form.getAttribute('action') || window.location.pathname;
+    try {
+      const destUrl = new URL(action, window.location.origin);
+      if (destUrl.origin === window.location.origin) {
+        markInternalNav();
+      }
+    } catch (err) {}
+  }, true);
+
+  // Detect keyboard reload shortcuts (F5, Ctrl+R, Cmd+R)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R'))) {
+      markInternalNav();
+    }
+  });
+
+  // Layer 1: sendBeacon on Tab/Browser Close
+  const beaconEndpoint = config.isAdmin ? '/admin/tab-close-beacon' : '/api/auth/tab-close-beacon';
+
+  function handleTabTermination(e) {
+    if (e && e.persisted) return; // bfcache (back/forward history navigation)
+
+    // Check if internal navigation was flagged
+    if (isInternalNav || sessionStorage.getItem('relay_is_navigating') === '1') {
+      return;
+    }
+
+    // Tab is closing, browser is quitting, or user navigated to an external website
+    const payload = JSON.stringify({ reason: 'tab_closed' });
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(beaconEndpoint, blob);
+    } else {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', beaconEndpoint, false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(payload);
+    }
+  }
+
+  window.addEventListener('pagehide', handleTabTermination);
+  window.addEventListener('beforeunload', () => {
+    // Keep internal navigation synchronized
+  });
+})();

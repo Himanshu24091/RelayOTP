@@ -10,6 +10,15 @@ from config import Config
 admin_bp = Blueprint('admin', __name__)
 
 def is_current_user_admin() -> bool:
+    pending_close = session.get('_pending_tab_close')
+    if pending_close:
+        import time
+        if time.time() - pending_close < 3.0:
+            session.pop('_pending_tab_close', None)
+        else:
+            session.clear()
+            return False
+
     # 1. Check if admin session was unlocked via Master Key or Admin Gate
     if session.get('admin_authenticated') is True:
         return True
@@ -88,11 +97,23 @@ def admin_login():
     flash("Invalid Master Key or Admin Credentials.", "danger")
     return render_template('admin_login.html'), 401
 
-@admin_bp.route('/admin/logout')
+@admin_bp.route('/admin/logout', methods=['GET', 'POST'])
 def admin_logout():
     session.clear()
-    flash("🔒 Super Admin session locked and logged out.", "info")
+    if request.method == 'POST':
+        return jsonify({'status': 'logged_out', 'message': 'Super Admin session terminated'}), 200
+    reason = request.args.get('reason')
+    if reason == 'tab_closed':
+        flash("🔒 Admin session locked: Browser tab was closed.", "warning")
+    else:
+        flash("🔒 Super Admin session locked and logged out.", "info")
     return redirect(url_for('admin.admin_login'))
+
+@admin_bp.route('/admin/tab-close-beacon', methods=['POST'])
+def admin_tab_close_beacon():
+    import time
+    session['_pending_tab_close'] = time.time()
+    return jsonify({'status': 'pending_close'}), 200
 
 @admin_bp.route('/admin')
 def admin_view():

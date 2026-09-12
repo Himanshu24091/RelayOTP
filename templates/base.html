@@ -167,8 +167,15 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=2.8.0"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}?v=2.8.0"></script>
+  <script>
+    window.RELAY_CONFIG = {
+      isLoggedIn: {{ 'true' if session.get('user_id') or session.get('admin_authenticated') else 'false' }},
+      isAdmin: {{ 'true' if session.get('admin_authenticated') else 'false' }},
+      currentUser: {{ session.get('username') | tojson if session.get('username') else 'null' }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/stealth.js') }}?v=3.0.0"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=3.0.0"></script>
   <script>
     // Ensure browsers re-check session with server when navigated back via history
     window.addEventListener('pageshow', function(e) {

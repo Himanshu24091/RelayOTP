@@ -410,5 +410,46 @@ class RelayOTPTestCase(unittest.TestCase):
         self.assertEqual(resp_long.status_code, 200)
         self.assertEqual(json.loads(resp_long.data).get('reason'), 'too_long')
 
+    def test_tab_close_sessions(self):
+        """Test tab close endpoints and session termination for both user and admin."""
+        # 1. User session tab-logout via beacon (POST)
+        with self.client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['username'] = 'test_tab_user'
+        
+        post_resp = self.client.post('/api/auth/tab-logout')
+        self.assertEqual(post_resp.status_code, 200)
+        self.assertEqual(json.loads(post_resp.data)['status'], 'logged_out')
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('user_id', sess)
+
+        # 2. User tab closed redirect (GET with reason=tab_closed)
+        with self.client.session_transaction() as sess:
+            sess['user_id'] = 1
+        get_resp = self.client.get('/logout?reason=tab_closed', follow_redirects=True)
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertIn(b'Session ended: Browser/tab was closed', get_resp.data)
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('user_id', sess)
+
+        # 3. Admin session tab-logout via beacon (POST)
+        with self.client.session_transaction() as sess:
+            sess['admin_authenticated'] = True
+            sess['username'] = 'admin'
+        admin_post_resp = self.client.post('/admin/logout')
+        self.assertEqual(admin_post_resp.status_code, 200)
+        self.assertEqual(json.loads(admin_post_resp.data)['status'], 'logged_out')
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('admin_authenticated', sess)
+
+        # 4. Admin tab closed redirect (GET with reason=tab_closed)
+        with self.client.session_transaction() as sess:
+            sess['admin_authenticated'] = True
+        admin_get_resp = self.client.get('/admin/logout?reason=tab_closed', follow_redirects=True)
+        self.assertEqual(admin_get_resp.status_code, 200)
+        self.assertIn(b'Admin session locked: Browser tab was closed', admin_get_resp.data)
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('admin_authenticated', sess)
+
 if __name__ == '__main__':
     unittest.main()

@@ -46,10 +46,23 @@ def create_app():
         endpoint = request.endpoint or ''
         if (
             endpoint.startswith('static') or 
-            endpoint in ['health_check', 'auth.logout', 'auth.tab_logout', 'auth.login', 'auth.register', 'auth.change_password', 'auth.check_username'] or
+            endpoint in ['health_check', 'auth.logout', 'auth.tab_logout', 'auth.tab_close_beacon', 'admin.admin_tab_close_beacon', 'auth.login', 'auth.register', 'auth.change_password', 'auth.check_username'] or
             endpoint.startswith('help.')
         ):
             return
+
+        # Check pending tab close from sendBeacon
+        pending_close = session.get('_pending_tab_close')
+        if pending_close:
+            import time
+            if time.time() - pending_close < 3.0:
+                # Immediate arrival within 3 seconds -> In-browser page reload! Keep session alive.
+                session.pop('_pending_tab_close', None)
+            else:
+                # Tab closed more than 3 seconds ago -> Terminate session securely.
+                session.clear()
+                flash("🔒 Session ended: Browser/tab was closed.", "info")
+                return redirect(url_for('auth.login'))
 
         user_id = session.get('user_id')
         if not user_id:

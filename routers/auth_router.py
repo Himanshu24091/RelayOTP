@@ -330,14 +330,28 @@ def change_password():
 @auth_bp.route('/logout')
 def logout():
     session.clear()
-    flash("You have been logged out securely.", "info")
+    reason = request.args.get('reason')
+    if reason == 'tab_closed':
+        flash("🔒 Session ended: Browser/tab was closed.", "info")
+    else:
+        flash("You have been logged out securely.", "info")
     return redirect(url_for('auth.login'))
 
-@auth_bp.route('/api/auth/tab-logout', methods=['POST'])
+@auth_bp.route('/api/auth/tab-logout', methods=['GET', 'POST'])
 def tab_logout():
     """
-    Called by navigator.sendBeacon on pagehide to destroy the session instantly
+    Called by tests or client on pagehide to destroy the session instantly
     when the browser tab or window is closed.
     """
     session.clear()
     return jsonify({'status': 'logged_out', 'message': 'Session cleared on tab close'}), 200
+
+@auth_bp.route('/api/auth/tab-close-beacon', methods=['POST'])
+def tab_close_beacon():
+    """
+    Called by navigator.sendBeacon when tab is hidden. Marks session for close
+    with a short 3-second grace window to allow seamless page reload.
+    """
+    import time
+    session['_pending_tab_close'] = time.time()
+    return jsonify({'status': 'pending_close'}), 200
