@@ -74,8 +74,15 @@ class InMemoryRateLimiter:
 # Global singleton
 rate_limiter = InMemoryRateLimiter()
 
-def get_client_ip(req) -> str:
+def get_client_ip(req=None) -> str:
     """Extracts client IP considering trusted proxy headers."""
-    if req.headers.getlist("X-Forwarded-For"):
-        return req.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
-    return req.remote_addr or "127.0.0.1"
+    if req is None:
+        from flask import request as flask_req
+        req = flask_req
+    try:
+        if req.headers.getlist("X-Forwarded-For"):
+            return req.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
+        return req.remote_addr or "127.0.0.1"
+    except Exception:
+        return "127.0.0.1"
+

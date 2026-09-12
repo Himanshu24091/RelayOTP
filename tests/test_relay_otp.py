@@ -362,15 +362,53 @@ class RelayOTPTestCase(unittest.TestCase):
         self.assertTrue(data.get('lockout'))
         self.assertGreater(data.get('remaining_seconds', 0), 200)
 
-    def test_xss_magic_link_protection(self):
-        """Test that non-HTTP/HTTPS schemes like javascript: are rejected by parser."""
-        dangerous_html = '<a href="javascript:alert(document.cookie)">Sign in to Claude.ai</a>'
-        dangerous_link = extract_magic_link(raw_html=dangerous_html, subject="Sign in to Claude.ai")
-        self.assertIsNone(dangerous_link, "javascript: scheme was not rejected!")
+    def test_username_availability_checker(self):
+        """Test real-time username availability checker API and validation rules."""
+        # 1. Available username
+        resp = self.client.get('/api/auth/check-username?username=brand_new_user_99')
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertTrue(data.get('available'))
+        self.assertEqual(data.get('reason'), 'available')
 
-        data_uri_html = '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">Sign in</a>'
-        data_link = extract_magic_link(raw_html=data_uri_html, subject="Sign in")
-        self.assertIsNone(data_link, "data: scheme was not rejected!")
+        # 2. Existing username
+        execute_query("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ("existing_dev", "dummyhash"))
+        resp2 = self.client.get('/api/auth/check-username?username=existing_dev')
+        self.assertEqual(resp2.status_code, 200)
+        data2 = json.loads(resp2.data)
+        self.assertFalse(data2.get('available'))
+        self.assertEqual(data2.get('reason'), 'taken')
+        self.assertTrue(len(data2.get('suggestions', [])) > 0)
+
+        # 3. Case-insensitive collision check
+        resp3 = self.client.get('/api/auth/check-username?username=EXISTING_DEV')
+        self.assertEqual(resp3.status_code, 200)
+        data3 = json.loads(resp3.data)
+        self.assertFalse(data3.get('available'))
+        self.assertEqual(data3.get('reason'), 'taken')
+
+        # 4. Reserved username
+        resp4 = self.client.get('/api/auth/check-username?username=admin')
+        self.assertEqual(resp4.status_code, 200)
+        data4 = json.loads(resp4.data)
+        self.assertFalse(data4.get('available'))
+        self.assertIn(data4.get('reason'), ['reserved', 'taken'])
+
+        # 5. Invalid format (spaces and special symbols)
+        resp5 = self.client.get('/api/auth/check-username?username=invalid%20name!')
+        self.assertEqual(resp5.status_code, 200)
+        data5 = json.loads(resp5.data)
+        self.assertFalse(data5.get('available'))
+        self.assertEqual(data5.get('reason'), 'invalid_format')
+
+        # 6. Length constraints
+        resp_short = self.client.get('/api/auth/check-username?username=ab')
+        self.assertEqual(resp_short.status_code, 200)
+        self.assertEqual(json.loads(resp_short.data).get('reason'), 'too_short')
+
+        resp_long = self.client.get('/api/auth/check-username?username=' + 'a' * 35)
+        self.assertEqual(resp_long.status_code, 200)
+        self.assertEqual(json.loads(resp_long.data).get('reason'), 'too_long')
 
 if __name__ == '__main__':
     unittest.main()

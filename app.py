@@ -46,7 +46,7 @@ def create_app():
         endpoint = request.endpoint or ''
         if (
             endpoint.startswith('static') or 
-            endpoint in ['health_check', 'auth.logout', 'auth.tab_logout', 'auth.login', 'auth.register', 'auth.change_password'] or
+            endpoint in ['health_check', 'auth.logout', 'auth.tab_logout', 'auth.login', 'auth.register', 'auth.change_password', 'auth.check_username'] or
             endpoint.startswith('help.')
         ):
             return

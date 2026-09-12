@@ -2033,3 +2033,159 @@ h1, h2, h3, h4, .brand-logo {
   background: rgba(239, 68, 68, 0.25);
   border-color: #ef4444;
 }
+
+/* ==========================================================================
+   Real-Time Registration Username Checker & Smart Suggestions
+   ========================================================================== */
+.username-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.username-input-wrapper input.form-input {
+  padding-right: 2.8rem;
+}
+
+.input-status-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.input-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: inputSpin 0.65s linear infinite;
+  display: inline-block;
+}
+
+@keyframes inputSpin {
+  to { transform: rotate(360deg); }
+}
+
+.form-input.is-valid {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18), 0 0 12px rgba(16, 185, 129, 0.1) !important;
+}
+
+.form-input.is-invalid {
+  border-color: rgba(244, 63, 94, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2), 0 0 12px rgba(244, 63, 94, 0.1) !important;
+}
+
+.form-input.is-checking {
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15) !important;
+}
+
+.username-feedback {
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.25rem;
+  line-height: 1.35;
+  transition: all 0.2s ease;
+}
+
+.username-feedback.feedback-valid {
+  color: #34d399;
+  font-weight: 600;
+}
+
+.username-feedback.feedback-invalid {
+  color: #fda4af;
+  font-weight: 500;
+}
+
+.username-feedback.feedback-checking {
+  color: #7dd3fc;
+  font-style: italic;
+}
+
+.username-feedback.feedback-neutral {
+  color: var(--text-subtle);
+}
+
+.username-suggestions-box {
+  margin-top: 0.55rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  animation: suggestionsFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes suggestionsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestions-header {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 0.8rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.suggestion-chip:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+}
+
+.suggestion-chip:active {
+  transform: translateY(0);
+}
+

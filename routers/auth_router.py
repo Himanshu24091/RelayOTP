@@ -1,4 +1,5 @@
 import re
+import random
 import bcrypt
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from utils.db import fetch_one, fetch_all, execute_query
@@ -7,6 +8,116 @@ from utils.rate_limiter import rate_limiter, get_client_ip
 from config import Config
 
 auth_bp = Blueprint('auth', __name__)
+
+RESERVED_USERNAMES = {
+    'admin', 'superadmin', 'root', 'support', 'system', 
+    'relayotp', 'helpdesk', 'api', 'null', 'undefined', 
+    'moderator', 'administrator'
+}
+
+def is_username_reserved(username: str) -> bool:
+    return username.lower().strip() in RESERVED_USERNAMES
+
+def generate_username_suggestions(base_username: str, limit: int = 3) -> list:
+    """Generates unique, available username suggestions based on a taken username."""
+    clean_base = re.sub(r'[^a-zA-Z0-9_]', '', base_username).strip()
+    if not clean_base:
+        clean_base = "user"
+    
+    if len(clean_base) > 22:
+        clean_base = clean_base[:22]
+
+    candidate_patterns = [
+        f"{clean_base}_{random.randint(10, 99)}",
+        f"{clean_base}_relay",
+        f"{clean_base}_{random.randint(100, 999)}",
+        f"{clean_base}_dev",
+        f"{clean_base}_pro",
+        f"{clean_base}_otp",
+        f"{clean_base}_{random.randint(20, 30)}"
+    ]
+
+    suggestions = []
+    for cand in candidate_patterns:
+        if len(cand) > 30 or cand.lower() in RESERVED_USERNAMES:
+            continue
+        existing = fetch_one("SELECT id FROM users WHERE LOWER(username) = LOWER(%s)", (cand,))
+        if not existing and cand not in suggestions:
+            suggestions.append(cand)
+            if len(suggestions) >= limit:
+                break
+    return suggestions
+
+@auth_bp.route('/api/auth/check-username', methods=['GET'])
+def check_username():
+    """Real-time API checking username availability with suggestions and format validation."""
+    ip = get_client_ip(request)
+    # Rate limit check: 60 queries / minute
+    is_locked, remaining_sec = rate_limiter.is_locked('check_username', ip)
+    if is_locked:
+        return jsonify({
+            'available': False,
+            'reason': 'rate_limited',
+            'message': f"Too many checks. Please wait {remaining_sec}s."
+        }), 429
+
+    raw_username = request.args.get('username', '')
+    username = raw_username.strip()
+
+    if not username:
+        return jsonify({
+            'available': False,
+            'reason': 'empty',
+            'message': 'Username is required.'
+        }), 200
+
+    if len(username) < 3:
+        return jsonify({
+            'available': False,
+            'reason': 'too_short',
+            'message': 'Minimum 3 characters required.'
+        }), 200
+
+    if len(username) > 30:
+        return jsonify({
+            'available': False,
+            'reason': 'too_long',
+            'message': 'Maximum 30 characters allowed.'
+        }), 200
+
+    if not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
+        return jsonify({
+            'available': False,
+            'reason': 'invalid_format',
+            'message': 'Letters, numbers, and underscores only (no spaces).'
+        }), 200
+
+    if is_username_reserved(username):
+        suggestions = generate_username_suggestions(username)
+        return jsonify({
+            'available': False,
+            'reason': 'reserved',
+            'message': f"'{username}' is a reserved system name.",
+            'suggestions': suggestions
+        }), 200
+
+    # Case-insensitive check in DB
+    existing = fetch_one("SELECT id FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
+    if existing:
+        suggestions = generate_username_suggestions(username)
+        return jsonify({
+            'available': False,
+            'reason': 'taken',
+            'message': f"'{username}' is already taken.",
+            'suggestions': suggestions
+        }), 200
+
+    return jsonify({
+        'available': True,
+        'reason': 'available',
+        'message': f"'{username}' is available!",
+        'username': username
+    }), 200
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -29,6 +140,10 @@ def register():
         flash("Username must be 3-30 characters (letters, numbers, underscores only).", "danger")
         return render_template('register.html', username=username)
 
+    if is_username_reserved(username):
+        flash(f"Username '{username}' is reserved by the system. Please choose another.", "danger")
+        return render_template('register.html', username=username)
+
     if len(password) < 8:
         flash("Password must be at least 8 characters long.", "danger")
         return render_template('register.html', username=username)
@@ -37,8 +152,8 @@ def register():
         flash("Passwords do not match.", "danger")
         return render_template('register.html', username=username)
 
-    # Check if username already exists
-    existing = fetch_one("SELECT id FROM users WHERE username = %s", (username,))
+    # Check if username already exists (case-insensitive)
+    existing = fetch_one("SELECT id FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
     if existing:
         flash("Username is already taken. Please choose another.", "danger")
         return render_template('register.html')

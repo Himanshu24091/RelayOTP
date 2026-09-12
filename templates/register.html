@@ -14,9 +14,23 @@
     <form method="POST" action="{{ url_for('auth.register') }}">
       
       <div class="form-group">
-        <label for="username" class="form-label">Portal Username</label>
-        <input type="text" id="username" name="username" class="form-input" placeholder="e.g. aman_dev" required autofocus value="{{ username or '' }}">
-        <div class="form-hint">Letters, numbers, and underscores only (3-30 characters)</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <label for="username" class="form-label" style="margin-bottom: 0;">Portal Username</label>
+          <span id="username-char-counter" style="font-size: 0.75rem; color: var(--text-subtle); font-family: var(--font-mono, monospace);">0/30</span>
+        </div>
+        <div class="username-input-wrapper">
+          <input type="text" id="username" name="username" class="form-input" placeholder="e.g. aman_dev" required autofocus value="{{ username or '' }}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="30">
+          <div id="username-status-indicator" class="input-status-indicator"></div>
+        </div>
+        <div id="username-feedback" class="username-feedback feedback-neutral">
+          <span>Letters, numbers, and underscores only (3-30 characters)</span>
+        </div>
+        <div id="username-suggestions" class="username-suggestions-box" style="display: none;">
+          <div class="suggestions-header">
+            <span>💡 Suggested Available Usernames:</span>
+          </div>
+          <div id="suggestions-chips-container" class="suggestion-chips"></div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -30,13 +44,12 @@
         <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="••••••••••••••••" required minlength="8">
       </div>
 
-
       <div class="security-notice">
         <strong>ℹ️ SECURITY NOTICE</strong><br>
         This master password only secures your RelayOTP web dashboard. You will link your Gmail via an isolated 16-character Google App Password inside the Settings vault after logging in.
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem; margin-top: 0.5rem;">
+      <button type="submit" id="register-submit-btn" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem; margin-top: 0.5rem;">
         🚀 CREATE ACCOUNT
       </button>
 
@@ -47,4 +60,197 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const usernameInput = document.getElementById('username');
+  const statusIndicator = document.getElementById('username-status-indicator');
+  const feedbackEl = document.getElementById('username-feedback');
+  const suggestionsBox = document.getElementById('username-suggestions');
+  const chipsContainer = document.getElementById('suggestions-chips-container');
+  const charCounter = document.getElementById('username-char-counter');
+  const registerForm = usernameInput ? usernameInput.closest('form') : null;
+  const submitBtn = document.getElementById('register-submit-btn');
+
+  let debounceTimer = null;
+  let currentAbortController = null;
+  let isUsernameValid = false;
+  let isChecking = false;
+
+  function updateCharCount(len) {
+    if (charCounter) {
+      charCounter.textContent = `${len}/30`;
+      charCounter.style.color = len >= 28 ? '#f43f5e' : (len >= 3 ? 'var(--text-muted)' : 'var(--text-subtle)');
+    }
+  }
+
+  function setStatus(state, message, iconHtml) {
+    usernameInput.classList.remove('is-valid', 'is-invalid', 'is-checking');
+    if (state === 'valid') usernameInput.classList.add('is-valid');
+    else if (state === 'invalid') usernameInput.classList.add('is-invalid');
+    else if (state === 'checking') usernameInput.classList.add('is-checking');
+
+    feedbackEl.className = `username-feedback feedback-${state}`;
+    feedbackEl.innerHTML = `<span>${message}</span>`;
+    statusIndicator.innerHTML = iconHtml || '';
+  }
+
+  function clearSuggestions() {
+    if (suggestionsBox) {
+      suggestionsBox.style.display = 'none';
+      if (chipsContainer) chipsContainer.innerHTML = '';
+    }
+  }
+
+  function renderSuggestions(suggestions) {
+    if (!suggestionsBox || !chipsContainer) return;
+    chipsContainer.innerHTML = '';
+    if (!suggestions || suggestions.length === 0) {
+      suggestionsBox.style.display = 'none';
+      return;
+    }
+
+    suggestions.forEach(cand => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'suggestion-chip';
+      chip.innerHTML = `<span>+</span> ${cand}`;
+      chip.title = `Click to choose '${cand}'`;
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        usernameInput.value = cand;
+        usernameInput.focus();
+        clearSuggestions();
+        checkAvailability(cand);
+      });
+      chipsContainer.appendChild(chip);
+    });
+
+    suggestionsBox.style.display = 'flex';
+  }
+
+  function checkAvailability(val) {
+    const raw = (val || '').trim();
+    updateCharCount(raw.length);
+
+    if (!raw) {
+      setStatus('neutral', 'Letters, numbers, and underscores only (3-30 characters)', '');
+      clearSuggestions();
+      isUsernameValid = false;
+      isChecking = false;
+      return;
+    }
+
+    if (raw.length < 3) {
+      setStatus('invalid', '⚠️ Minimum 3 characters required.', '<span style="color:#fda4af; font-weight:700;">✕</span>');
+      clearSuggestions();
+      isUsernameValid = false;
+      isChecking = false;
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(raw)) {
+      setStatus('invalid', '❌ Letters, numbers, and underscores only (no spaces or special characters).', '<span style="color:#fda4af; font-weight:700;">✕</span>');
+      clearSuggestions();
+      isUsernameValid = false;
+      isChecking = false;
+      return;
+    }
+
+    if (raw.length > 30) {
+      setStatus('invalid', '❌ Maximum 30 characters allowed.', '<span style="color:#fda4af; font-weight:700;">✕</span>');
+      clearSuggestions();
+      isUsernameValid = false;
+      isChecking = false;
+      return;
+    }
+
+    // Cancel in-flight request if user kept typing
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+    currentAbortController = new AbortController();
+
+    isChecking = true;
+    setStatus('checking', 'Checking username availability...', '<span class="input-spinner"></span>');
+
+    fetch(`/api/auth/check-username?username=${encodeURIComponent(raw)}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: currentAbortController.signal
+    })
+    .then(res => res.json())
+    .then(data => {
+      isChecking = false;
+      if (data.available) {
+        isUsernameValid = true;
+        setStatus('valid', data.message || '✓ Username is available!', '<span style="color:#34d399; font-weight:700;">✓</span>');
+        clearSuggestions();
+      } else {
+        isUsernameValid = false;
+        setStatus('invalid', data.message || '✗ Username is unavailable.', '<span style="color:#fda4af; font-weight:700;">✕</span>');
+        if (data.suggestions && data.suggestions.length > 0) {
+          renderSuggestions(data.suggestions);
+        } else {
+          clearSuggestions();
+        }
+      }
+    })
+    .catch(err => {
+      if (err.name === 'AbortError') return;
+      isChecking = false;
+      setStatus('neutral', 'Unable to verify availability right now. You can still submit.', '');
+      clearSuggestions();
+    });
+  }
+
+  // Live input listener with 250ms debounce
+  if (usernameInput) {
+    usernameInput.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      const val = e.target.value;
+      updateCharCount(val.trim().length);
+
+      // Instant syntax validation before debouncing API call
+      if (!val.trim()) {
+        setStatus('neutral', 'Letters, numbers, and underscores only (3-30 characters)', '');
+        clearSuggestions();
+        isUsernameValid = false;
+        return;
+      }
+
+      debounceTimer = setTimeout(() => {
+        checkAvailability(val);
+      }, 250);
+    });
+
+    // Initial check if value pre-filled
+    if (usernameInput.value.trim()) {
+      checkAvailability(usernameInput.value);
+    }
+  }
+
+  // Form submit protection
+  if (registerForm) {
+    registerForm.addEventListener('submit', (e) => {
+      if (isChecking) {
+        e.preventDefault();
+        alert('Please wait a moment while we verify username availability.');
+        return;
+      }
+      const val = (usernameInput.value || '').trim();
+      if (!val || val.length < 3 || !isUsernameValid) {
+        e.preventDefault();
+        usernameInput.focus();
+        usernameInput.classList.add('is-invalid');
+        if (window.showToast) {
+          window.showToast('Please choose a valid and available username before continuing.', 'warning');
+        }
+      }
+    });
+  }
+});
+</script>
 {% endblock %}
