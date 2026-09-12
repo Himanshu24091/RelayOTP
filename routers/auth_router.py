@@ -144,7 +144,7 @@ def login():
                     dt = dt.replace(tzinfo=timezone.utc)
                 if now >= dt:
                     # Suspension expired, auto-lift
-                    execute_query("UPDATE users SET is_suspended = 0, suspended_until = NULL, suspension_reason = NULL WHERE id = %s", (user['id'],))
+                    execute_query("UPDATE users SET is_suspended = %s, suspended_until = NULL, suspension_reason = NULL WHERE id = %s", (False, user['id']))
                     is_still_suspended = False
             except Exception:
                 pass
@@ -206,8 +206,9 @@ def change_password():
         return render_template('change_password.html')
 
     new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    execute_query("UPDATE users SET password_hash = %s, must_change_password = 0 WHERE id = %s", (new_hash, user_id))
+    execute_query("UPDATE users SET password_hash = %s, must_change_password = %s WHERE id = %s", (new_hash, False, user_id))
     session.pop('must_change_password', None)
+    ensure_active_code(user_id)
     flash("Master password updated successfully! Your account is now secured.", "success")
     return redirect(url_for('dashboard.dashboard_view'))
 

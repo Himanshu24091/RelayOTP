@@ -162,7 +162,7 @@ class RelayOTPTestCase(unittest.TestCase):
 
         user = fetch_one("SELECT id FROM users WHERE username = %s", ("regular_user",))
         # Even if first user was regular_user, let's explicitly set is_admin=False
-        execute_query("UPDATE users SET is_admin = 0 WHERE id = %s", (user['id'],))
+        execute_query("UPDATE users SET is_admin = %s WHERE id = %s", (False, user['id']))
         self.client.get('/logout')
 
         # Log in as regular user
@@ -184,7 +184,7 @@ class RelayOTPTestCase(unittest.TestCase):
         self.client.get('/admin/logout')
 
         # Promote to admin in DB
-        execute_query("UPDATE users SET is_admin = 1 WHERE id = %s", (user['id'],))
+        execute_query("UPDATE users SET is_admin = %s WHERE id = %s", (True, user['id']))
         # Re-login to update session
         self.client.post('/login', data={
             'username': 'regular_user',

@@ -83,7 +83,7 @@ def create_app():
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     if now >= dt:
-                        execute_query("UPDATE users SET is_suspended = 0, suspended_until = NULL, suspension_reason = NULL WHERE id = %s", (user_id,))
+                        execute_query("UPDATE users SET is_suspended = %s, suspended_until = NULL, suspension_reason = NULL WHERE id = %s", (False, user_id))
                         is_active = False
                 except Exception:
                     pass
