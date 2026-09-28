@@ -60,3 +60,5 @@ yarn-error.log*
 # Antigravity & Agent Workspaces
 .system_generated/
 .agents/
+
+railway_veriables.env
